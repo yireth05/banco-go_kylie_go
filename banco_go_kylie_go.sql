@@ -847,6 +847,41 @@ ALTER TABLE ONLY public.transacciones
 --
 -- PostgreSQL database dump complete
 --
+--CREACION DE GRUPOS DE ROL Y USUARIOS---------------------------------------------------------
+CREATE ROLE grup_admins NOLOGIN;--acceso total a al info
+CREATE ROLE grup_cajeros NOLOGIN;--consulta clientes, crea clientes y procesa trnasacciones
+CREATE ROLE grup_clientes NOLOGIN;--solo consulta sus datos y hace transacciones de su cuenta
+--privi del admins
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO grup_admins;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO grup_admins;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO grup_admins;
+--privi del cajero
+GRANT USAGE ON SCHEMA public TO grup_cajeros;
+GRANT SELECT ON public.ciudades, public.sucursales, public.cajeros, public.tipo_cuentas, public.tipo_transacciones, public.formas_transacciones, public.banca_virtual TO grup_cajeros;
+GRANT SELECT,INSERT,UPDATE ON public.clientes, public.cuentas, public.prestamos TO grup_cajeros; 
+GRANT SELECT ON public.transacciones, public.bitacora_transacciones TO grup_cajeros;
+GRANT EXECUTE ON FUNCTION public.realizar_transaccion TO grup_cajeros;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO grup_cajeros;
+--privi clientes
+GRANT USAGE ON SCHEMA public TO grup_clientes;
+GRANT SELECT ON public.clientes, public.cuentas, public.transacciones, public.tipo_cuentas, public.tipo_transacciones TO grup_clientes;
+GRANT EXECUTE ON FUNCTION public.realizar_transaccion TO grup_clientes;
+GRANT USAGE, SELECT ON SEQUENCE public.transacciones_id_transaccion_seq TO grup_clientes;
+
+--ahpra si creo el usuario, una vez creado el grupo solo debo asignarle un crupo a cada tipo de user
+CREATE USER administrador WITH
+    LOGIN
+    ENCRYPTED PASSWORD 'admin123';
+CREATE USER cajero WITH
+    LOGIN
+    ENCRYPTED PASSWORD 'cajero123';
+CREATE USER cliente WITH
+    LOGIN
+    ENCRYPTED PASSWORD 'cliente123';
+
+GRANT grup_admins TO administrador;
+GRANT grup_cajeros TO cajero;
+GRANT grup_clientes TO cliente;
 
 \unrestrict i9K2AjpXSQaPM1dSyC39FnGO7uFFdDjwptoEICcy48c53Zz0VEbqcPTTMWZcljK
 
