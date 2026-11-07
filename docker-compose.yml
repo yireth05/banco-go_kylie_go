@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  postgres_banco:
+    image: postgres:15-alpine
+    container_name: postgres_banco_go
+    restart: always
+    environment:
+      POSTGRES_DB: banco_go_kylie_go
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin123
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./banco_go_kylie_go.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  pgdata:
