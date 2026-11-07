@@ -1,18 +1,15 @@
 <?php
-$host='localhost';
-$dbname='banco_villavicencio';
-$user= 'postgrest';
-$password='contraseña';
+// conexionDB.php
+$host     = "127.0.0.1";
+$port     = "5432";
+$dbname   = "banco_go_kylie_go";
+$user     = "postgres";
+$password = "admin123";
 
-try{
-  $conexion= new PDO("pgsql:host=$host;dbname=$dbname",$user,$password);}
-  $conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-//METODO para cambiar una confi o atributo, ERRMODE indica a PDO que se modifica el atributo 
-//encargado del control de comportamiento de errores, EXCEPTION, lanza una excepcion en lugar de solo 
-//mostrar una advertencia en pantalla
-  echo "Estas conectado al Banco Villavicencio :)";
+try {
+    $conexion = new PDO("pgsql:host=$host;port=$port;dbname=$dbname", $user, $password);
+    $conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    die("Error en la conexion a la base de datos: " . $e->getMessage());
 }
-  catch (Exception $e){
-    echo "No se logra conectar al Banco VIllavicencio: " . $e->getMessage();
-  }
 ?>
