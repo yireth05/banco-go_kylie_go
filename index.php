@@ -71,7 +71,7 @@ $usuario = $_SESSION['usuario'] ?? 'Usuario';
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Gestión de Usuarios</h5>
                         <p class="text-muted small">Control de roles y accesos del sistema definidos en PostgreSQL.</p>
-                        <a href="admin_usuarios.php" class="btn btn-sm btn-dark mt-auto rounded-pill">Administrar Usuarios</a>
+                        <a href="estado_cuentas.php" class="btn btn-sm btn-dark mt-auto rounded-pill">Administrar Usuarios</a>
                     </div>
                 </div>
                 <div class="col-md-4">
