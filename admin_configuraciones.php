@@ -56,7 +56,7 @@ try {
     <div class="container py-5">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h2 class="fw-bold" style="color: var(--color-0e1b48);">⚙️ Configuraciones y Parámetros del Banco</h2>
+                <h2 class="fw-bold" style="color: var(--color-0e1b48);">Configuraciones y Parámetros del Banco</h2>
                 <p class="text-muted mb-0">Gestión de tablas maestras del sistema en PostgreSQL.</p>
             </div>
             <a href="index.php" class="btn btn-outline-secondary rounded-pill">← Volver al Panel</a>
@@ -70,7 +70,7 @@ try {
             <!-- TABLA SUCURSALES -->
             <div class="col-lg-6">
                 <div class="card card-custom p-4 bg-white h-100">
-                    <h5 class="fw-bold text-dark mb-3">🏢 Sucursales del Banco</h5>
+                    <h5 class="fw-bold text-dark mb-3">Sucursales del Banco</h5>
                     <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle">
                             <thead class="table-dark">
@@ -103,7 +103,7 @@ try {
             <!-- TABLA CAJEROS -->
             <div class="col-lg-6">
                 <div class="card card-custom p-4 bg-white h-100">
-                    <h5 class="fw-bold text-dark mb-3">🏧 Cajeros Automáticos</h5>
+                    <h5 class="fw-bold text-dark mb-3">Cajeros Automáticos</h5>
                     <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle">
                             <thead class="table-dark">
@@ -140,7 +140,7 @@ try {
             <!-- TABLA TIPOS DE CUENTA -->
             <div class="col-lg-6">
                 <div class="card card-custom p-4 bg-white h-100">
-                    <h5 class="fw-bold text-dark mb-3">💳 Tipos de Cuenta</h5>
+                    <h5 class="fw-bold text-dark mb-3">Tipos de Cuenta</h5>
                     <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle">
                             <thead class="table-dark">
@@ -169,7 +169,7 @@ try {
             <!-- TABLA CIUDADES -->
             <div class="col-lg-6">
                 <div class="card card-custom p-4 bg-white h-100">
-                    <h5 class="fw-bold text-dark mb-3">🌆 Ciudades Operativas</h5>
+                    <h5 class="fw-bold text-dark mb-3">Ciudades Operativas</h5>
                     <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle">
                             <thead class="table-dark">
