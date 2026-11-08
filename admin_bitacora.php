@@ -36,7 +36,7 @@ try {
     <div class="container py-5">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h2 class="fw-bold" style="color: var(--color-0e1b48);">📋 Bitácora de Auditoría del Sistema</h2>
+                <h2 class="fw-bold" style="color: var(--color-0e1b48);">Bitácora de Auditoría del Sistema</h2>
                 <p class="text-muted mb-0">Monitoreo en tiempo real de las operaciones registradas en PostgreSQL.</p>
             </div>
             <a href="index.php" class="btn btn-outline-secondary rounded-pill">← Volver al Panel</a>
