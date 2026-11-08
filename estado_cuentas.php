@@ -1,13 +1,14 @@
 <?php
-include_once "conexionDB.php"
+include_once "conexionDB.php";
 
 $busqueda=$_GET['busqueda'] ?? '';
 $cuentas=[];
-if($busqueda! =''){
+if($busqueda !== ''){
   $sql="SELECT c.*,cli.nomb_cli, cli.apelli_cli FROM cuentas c
-        JOIN clientes cli ON cli.id_cliente=c.ide_cliente
+        JOIN clientes cli ON cli.id_cliente=c.id_cliente
         WHERE c.id_cliente LIKE ? OR c.num_cuenta LIKE ?";
-$stmt=$conexion->query($sql);
+$stmt = $conexion->prepare($sql);  
+$stmt->execute([$numero_buscado]);
 $cuentas=$stmt->fetchAll(PDO::FETCH_ASSOC);
 }else{
   $sql="SELECT c.*, cli.nomb_cli, cli.apelli_cli FROM cuentas c
@@ -69,7 +70,7 @@ $cuentas=$stmt->fetchAll(PDO::FETCH_ASSOC);
                                             <td><?php echo $cuenta['id_cliente']; ?></td>
                                             <!-- Pintamos el saldo con formato de dinero y color verdecito si tiene plata -->
                                             <td class="text-success fw-bold">$<?php echo number_format($cuenta['saldo'], 2); ?></td>
-                                            <td><?php echo $cuenta['cod_tipo']; ?></td>
+                                            <td><?php echo $cuenta['cod_tipo_cuenta']; ?></td>
                                             <td>
                                                 <a href="Crear-RealizarTransacciones.php?cuenta=<?php echo $cuenta['num_cuenta']; ?>" class="btn btn-primary btn-sm">Transaccionar</a>
                                             </td>
