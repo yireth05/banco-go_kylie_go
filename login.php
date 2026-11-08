@@ -1,25 +1,30 @@
 <?php
-// Crearcliente.php
+// login.php
 session_start();
 
-$mensaje = "";
 $error = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $cedula   = trim($_POST['cedula']);
-    $nombre   = trim($_POST['nombre']);
-    $apellido = trim($_POST['apellido']);
-    $correo   = trim($_POST['correo']);
-    $telefono = trim($_POST['telefono']);
+    $usuario  = trim($_POST['usuario']);
+    $password = trim($_POST['password']);
 
-    // Validación básica y conexión o simulación de guardado
-    if (!empty($cedula) && !empty($nombre) && !empty($apellido)) {
-        // Aquí puedes incluir tu lógica de conexión a la base de datos (conexionDB.php)
-        // Ejemplo de redirección exitosa hacia crear_cuenta.php pasando la cédula del nuevo cliente
-        header("Location: crear_cuenta.php?cedula=" . urlencode($cedula));
+    // Validación rápida para pruebas de rol y acceso
+    if (!empty($usuario) && !empty($password)) {
+        $_SESSION['usuario'] = $usuario;
+
+        if ($usuario === 'administrador') {
+            $_SESSION['rol'] = 'administrador';
+        } elseif ($usuario === 'cajero') {
+            $_SESSION['rol'] = 'cajero';
+        } else {
+            $_SESSION['rol'] = 'cliente';
+            $_SESSION['id_cliente'] = '1006123456';
+        }
+
+        header("Location: index.php");
         exit;
     } else {
-        $error = "Por favor completa los campos obligatorios (Cédula, Nombre y Apellido).";
+        $error = "Por favor completa todos los campos.";
     }
 }
 ?>
@@ -28,7 +33,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crear Cliente - Banco GO KYLIE GO</title>
+    <title>Login - Banco GO KYLIE GO</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
@@ -43,23 +48,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             background: linear-gradient(135deg, var(--color-e2cad8) 0%, var(--color-87a7d0) 100%);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        .navbar-custom {
-            background-color: var(--color-0e1b48);
-            box-shadow: 0 4px 12px rgba(14, 27, 72, 0.15);
-        }
-        .navbar-brand {
-            color: #ffffff !important;
-            font-weight: 700;
-        }
-        .nav-link {
-            color: var(--color-e2cad8) !important;
-            font-weight: 500;
-        }
-        .nav-link:hover {
-            color: #ffffff !important;
         }
         .card-custom {
             border-radius: 24px;
@@ -67,7 +55,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             box-shadow: 0 15px 35px rgba(14, 27, 72, 0.15);
             background-color: #ffffff;
         }
-        .text-brand { color: var(--color-0e1b48); }
+        .text-brand { 
+            color: var(--color-0e1b48); 
+        }
         .form-label {
             color: var(--color-0e1f2f);
             font-weight: 600;
@@ -75,7 +65,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         .form-control-custom {
             border-radius: 12px;
-            padding: 10px 14px;
+            padding: 12px 16px;
             border: 2px solid var(--color-e2cad8);
             background-color: #fcfcfd;
             color: var(--color-0e1f2f);
@@ -93,72 +83,68 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             padding: 12px 24px;
             border: none;
             font-weight: 600;
+            letter-spacing: 0.5px;
             transition: all 0.3s ease;
             box-shadow: 0 4px 10px rgba(14, 27, 72, 0.2);
         }
         .btn-custom:hover {
             background-color: var(--color-27425d);
             transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(39, 66, 93, 0.3);
             color: var(--color-e2cad8);
+        }
+        .badge-accent {
+            background-color: var(--color-c18db4);
+            color: #ffffff;
+            font-weight: 500;
+        }
+        .link-brand {
+            color: var(--color-0e1b48);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+        .link-brand:hover {
+            color: var(--color-27425d);
+            text-decoration: underline;
         }
     </style>
 </head>
-<body>
-
-    <!-- Menú de Navegación Superior -->
-    <nav class="navbar navbar-expand-lg navbar-custom px-4 py-3">
-        <div class="container-fluid">
-            <a class="navbar-brand fs-4" href="index.php">Banco GO KYLIE GO</a>
-            <div class="navbar-nav ms-auto flex-row gap-3">
-                <a class="nav-link" href="index.php">Inicio</a>
-                <a class="nav-link" href="login.php">Entrar</a>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Contenido del Formulario -->
-    <div class="container my-5" style="max-width: 600px;">
-        <div class="card card-custom p-4">
-            <div class="card-body">
-                <div class="text-center mb-4">
-                    <span class="badge rounded-pill px-3 py-1 mb-2" style="background-color: var(--color-c18db4); color: white;">Módulo de Gestión</span>
-                    <h3 class="fw-bold text-brand">Registrar Nuevo Cliente</h3>
-                    <p class="text-muted small">Ingresa los datos personales para dar de alta al cliente y proceder a crear su cuenta.</p>
+<body class="d-flex align-items-center vh-100">
+    <div class="container" style="max-width: 420px;">
+        <div class="card card-custom p-2">
+            <div class="card-body p-4">
+                <div class="text-center mb-3">
+                    <span class="badge badge-accent rounded-pill px-3 py-1 mb-2">Banca Segura</span>
+                    <h3 class="fw-bold text-brand mb-1">Banco GO KYLIE GO</h3>
+                    <p class="text-muted small">Inicia sesión en tu cuenta</p>
                 </div>
 
                 <?php if ($error): ?>
-                    <div class="alert alert-danger py-2 small text-center rounded-4"><?php echo $error; ?></div>
+                    <div class="alert alert-danger py-2 small text-center rounded-4" style="background-color: #f8d7da; color: #842029; border: none;"><?php echo $error; ?></div>
                 <?php endif; ?>
 
-                <form method="POST" action="Crearcliente.php">
+                <form method="POST" action="login.php">
                     <div class="mb-3">
-                        <label class="form-label">Cédula / Identificación</label>
-                        <input type="text" name="cedula" class="form-control form-control-custom" placeholder="Ej: 1006123456" required>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Nombre</label>
-                            <input type="text" name="nombre" class="form-control form-control-custom" placeholder="Ej: Kylie" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Apellido</label>
-                            <input type="text" name="apellido" class="form-control form-control-custom" placeholder="Ej: Parra" required>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Correo Electrónico</label>
-                        <input type="email" name="correo" class="form-control form-control-custom" placeholder="correo@banco.com">
+                        <label class="form-label">Usuario</label>
+                        <input type="text" name="usuario" class="form-control form-control-custom" placeholder="Ej: administrador" required>
                     </div>
                     <div class="mb-4">
-                        <label class="form-label">Teléfono</label>
-                        <input type="text" name="telefono" class="form-control form-control-custom" placeholder="Ej: 3001234567">
+                        <label class="form-label">Contraseña</label>
+                        <input type="password" name="password" class="form-control form-control-custom" placeholder="••••••••" required>
                     </div>
-                    <button type="submit" class="btn btn-custom w-100">Guardar Cliente y Crear Cuenta ➔</button>
+                    <button type="submit" class="btn btn-custom w-100 mt-2">Iniciar Sesión</button>
                 </form>
+
+                <!-- Botón / Enlace para ir a Crear Cliente -->
+                <div class="text-center mt-4 pt-3 border-top">
+                    <p class="text-muted small mb-2">¿Eres nuevo o necesitas registrar a alguien?</p>
+                    <a href="Crearcliente.php" class="btn btn-outline-secondary w-100 rounded-pill py-2 fw-semibold" style="border-color: var(--color-87a7d0); color: var(--color-0e1b48);">
+                        Crear Nuevo Cliente ➔
+                    </a>
+                </div>
             </div>
         </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
