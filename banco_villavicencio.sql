@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict hMijrtkKbeB0F2mkFdaxUx8TEwlbltbodftKYGBgF6xFP0t9CoNi3Hsdsu2K4rg
+\restrict 11ryNF0exuHqIvYxw5oALKcsHKmNXAHj0SZtqEVH5VdXqagxqf3LkIVfAM9GrD4
 
 -- Dumped from database version 15.19
 -- Dumped by pg_dump version 15.19
@@ -1142,13 +1142,13 @@ GRANT SELECT,USAGE ON SEQUENCE public.transacciones_id_transaccion_seq TO grup_c
 -- PostgreSQL database dump complete
 --
 
-\unrestrict hMijrtkKbeB0F2mkFdaxUx8TEwlbltbodftKYGBgF6xFP0t9CoNi3Hsdsu2K4rg
+\unrestrict 11ryNF0exuHqIvYxw5oALKcsHKmNXAHj0SZtqEVH5VdXqagxqf3LkIVfAM9GrD4
 
 --
 -- PostgreSQL database cluster dump
 --
 
-\restrict jmViDvsGOTHM2oUo3DqgTrJfQ5bKqmaAh4mUqvc9mDZgLY3nAiQf4HfZrXPyCRS
+\restrict RLdytdNnDjemtw1uTWVfw2X1iOiVXFKIxn5fB2Nx5BchbWyZzS5QHqhJoGcUA46
 
 SET default_transaction_read_only = off;
 
@@ -1310,7 +1310,7 @@ GRANT grup_clientes TO cliente GRANTED BY postgres;
 
 
 
-\unrestrict jmViDvsGOTHM2oUo3DqgTrJfQ5bKqmaAh4mUqvc9mDZgLY3nAiQf4HfZrXPyCRS
+\unrestrict RLdytdNnDjemtw1uTWVfw2X1iOiVXFKIxn5fB2Nx5BchbWyZzS5QHqhJoGcUA46
 
 --
 -- PostgreSQL database cluster dump complete
