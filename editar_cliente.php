@@ -1,121 +1,104 @@
 <?php
-// editar_cliente.php
 session_start();
 require_once "conexionDB.php";
 
-$mensaje = "";
-$error = "";
-
-// Obtener el ID del cliente desde la URL (GET) o desde el formulario (POST)
-$id_cliente = $_GET['id'] ?? $_POST['id_cliente'] ?? null;
-
-if (!$id_cliente) {
-    header("Location: listadeClientesRead.php");
+if (!isset($_SESSION['rol'])) {
+    header("Location: login.php");
     exit;
 }
 
-// 1. Procesar la actualización cuando se envíe el formulario
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $nomb_cli   = trim($_POST["nomb_cli"] ?? '');
-    $apelli_cli = trim($_POST["apelli_cli"] ?? '');
-    $direccion  = trim($_POST["direccion"] ?? '');
-    $telefono   = trim($_POST["telefono"] ?? '');
-    $correo     = trim($_POST["correo"] ?? '');
-
-    if (empty($nomb_cli) || empty($apelli_cli)) {
-        $error = "El nombre y el apellido son obligatorios.";
-    } else {
-        try {
-            $sql = "UPDATE clientes SET nomb_cli = ?, apelli_cli = ?, direccion = ?, telefono = ?, correo = ? WHERE id_cliente = ?";
-            $sentencia = $conexion->prepare($sql);
-            $resultado = $sentencia->execute([$nomb_cli, $apelli_cli, $direccion, $telefono, $correo, $id_cliente]);
-
-            if ($resultado) {
-                $mensaje = "¡Datos del cliente actualizados exitosamente!";
-            }
-        } catch (PDOException $e) {
-            $error = "Error al actualizar el cliente: " . $e->getMessage();
-        }
+// Determinar a qué ID se va a consultar/modificar según quién está logueado
+if ($_SESSION['rol'] === 'cliente') {
+    // El cliente solo puede ver y editar sus propios datos
+    $id_objetivo = $_SESSION['id_cliente'];
+} else {
+    // Si es administrador o cajero, puede buscar el ID que reciba por la URL (GET) o POST
+    $id_objetivo = $_GET['id'] ?? $_POST['id_cliente'] ?? null;
+    if (!$id_objetivo) {
+        die("Acceso denegado: No se especificó el ID del cliente.");
     }
 }
 
-// 2. Consultar los datos actuales del cliente para rellenar el formulario
-try {
-    $stmt = $conexion->prepare("SELECT * FROM clientes WHERE id_cliente = ?");
-    $stmt->execute([$id_cliente]);
-    $cliente = $stmt->fetch(PDO::FETCH_ASSOC);
+$mensaje = "";
 
-    if (!$cliente) {
-        exit("Cliente no encontrado en el sistema.");
+// Procesar la actualización si envían el formulario
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $direccion = trim($_POST['direccion']);
+    $telefono  = trim($_POST['telefono']);
+    $correo    = trim($_POST['correo']);
+
+    try {
+        $stmt = $conexion->prepare("UPDATE clientes SET direccion = :dir, telefono = :tel, correo = :corr WHERE id_cliente = :id");
+        $stmt->execute(['dir' => $direccion, 'tel' => $telefono, 'corr' => $correo, 'id' => $id_objetivo]);
+        $mensaje = "<div class='alert alert-success'>Datos actualizados correctamente.</div>";
+    } catch (Exception $e) {
+        $mensaje = "<div class='alert alert-danger'>Error al actualizar: " . $e->getMessage() . "</div>";
     }
-} catch (PDOException $e) {
-    exit("Error de base de datos: " . $e->getMessage());
+}
+
+// Consultar los datos actuales del cliente objetivo
+$stmt = $conexion->prepare("SELECT * FROM clientes WHERE id_cliente = :id");
+$stmt->execute(['id' => $id_objetivo]);
+$cliente = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$cliente) {
+    die("Cliente no encontrado.");
 }
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Editar Cliente - Banco Villavicencio</title>
+    <title>Gestión de Datos - Banco Villavicencio</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-    <div class="container py-5">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="fw-bold" style="color: #0E1B48;">✏️ Modificar Datos del Cliente</h2>
-            <a href="listadeClientesRead.php" class="btn btn-outline-secondary rounded-pill">← Volver a la Lista</a>
-        </div>
+    <div class="container mt-4 mb-5" style="max-width: 600px;">
+        <div class="card shadow border-0 rounded-4">
+            <div class="card-header text-white py-3 rounded-top-4" style="background-color: #0E1B48;">
+                <h4 class="mb-0 fs-5">
+                    <?php echo ($_SESSION['rol'] === 'cliente') ? 'Mis Datos Personales' : 'Modificar Cliente (Vista Administrador)'; ?>
+                </h4>
+            </div>
+            <div class="card-body p-4">
+                <?php echo $mensaje; ?>
+                <form method="POST">
+                    <!-- Si es admin, pasamos el ID oculto por POST para no perderlo -->
+                    <?php if ($_SESSION['rol'] !== 'cliente'): ?>
+                        <input type="hidden" name="id_cliente" value="<?php echo htmlspecialchars($id_objetivo); ?>">
+                    <?php endif; ?>
 
-        <?php if (!empty($mensaje)): ?>
-            <div class="alert alert-success"><?php echo $mensaje; ?></div>
-        <?php endif; ?>
-
-        <?php if (!empty($error)): ?>
-            <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
-        <?php endif; ?>
-
-        <div class="card shadow-sm border-0 rounded-4 p-4 bg-white col-lg-8 mx-auto">
-            <form action="editar_cliente.php" method="POST">
-                <!-- Campo oculto para mantener el ID del cliente sin que el usuario lo altere -->
-                <input type="hidden" name="id_cliente" value="<?php echo htmlspecialchars($cliente['id_cliente']); ?>">
-
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Cédula / Identificación (No modificable)</label>
-                    <input type="text" class="form-control bg-light" value="<?php echo htmlspecialchars($cliente['id_cliente']); ?>" disabled>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="nomb_cli" class="form-label fw-bold">Nombre *</label>
-                        <input type="text" class="form-control" id="nomb_cli" name="nomb_cli" value="<?php echo htmlspecialchars($cliente['nomb_cli']); ?>" required>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Cédula / ID:</label>
+                        <input type="text" class="form-control" value="<?php echo htmlspecialchars($cliente['id_cliente']); ?>" disabled>
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="apelli_cli" class="form-label fw-bold">Apellido *</label>
-                        <input type="text" class="form-control" id="apelli_cli" name="apelli_cli" value="<?php echo htmlspecialchars($cliente['apelli_cli']); ?>" required>
-                    </div>
-                </div>
 
-                <div class="mb-3">
-                    <label for="direccion" class="form-label fw-bold">Dirección</label>
-                    <input type="text" class="form-control" id="direccion" name="direccion" value="<?php echo htmlspecialchars($cliente['direccion']); ?>">
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="telefono" class="form-label fw-bold">Teléfono</label>
-                        <input type="text" class="form-control" id="telefono" name="telefono" value="<?php echo htmlspecialchars($cliente['telefono']); ?>">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nombres y Apellidos:</label>
+                        <input type="text" class="form-control" value="<?php echo htmlspecialchars($cliente['nomb_cli'] . ' ' . $cliente['apelli_cli']); ?>" disabled>
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="correo" class="form-label fw-bold">Correo Electrónico</label>
-                        <input type="email" class="form-control" id="correo" name="correo" value="<?php echo htmlspecialchars($cliente['correo']); ?>">
-                    </div>
-                </div>
 
-                <div class="d-grid mt-3">
-                    <button type="submit" class="btn btn-primary btn-lg rounded-pill" style="background-color: #0E1B48; border: none;">Guardar Cambios</button>
-                </div>
-            </form>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Dirección:</label>
+                        <input type="text" class="form-label form-control" name="direccion" value="<?php echo htmlspecialchars($cliente['direccion']); ?>" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Teléfono:</label>
+                        <input type="text" class="form-control" name="telefono" value="<?php echo htmlspecialchars($cliente['telefono']); ?>" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Correo Electrónico:</label>
+                        <input type="email" class="form-control" name="correo" value="<?php echo htmlspecialchars($cliente['correo']); ?>" required>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="index.php" class="btn btn-outline-secondary rounded-pill">Volver</a>
+                        <button type="submit" class="btn btn-success rounded-pill px-4">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </body>
