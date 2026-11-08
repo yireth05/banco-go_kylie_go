@@ -9,26 +9,46 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $usuario_rol = $_POST['usuario'] ?? '';
     $password    = trim($_POST['password'] ?? '');
     $cedula      = trim($_POST['cedula'] ?? '');
+    $id_empleado = trim($_POST['id_empleado'] ?? '');
 
     try {
         if ($usuario_rol === 'administrador') {
-            if ($password === 'admin123') {
-                $_SESSION['usuario'] = 'Administrador';
-                $_SESSION['rol']     = 'administrador';
-                header("Location: index.php");
-                exit;
+            if (!empty($id_empleado) && !empty($password)) {
+                $stmt = $conexion->prepare("SELECT * FROM empleados WHERE id_empleado = :id AND rol = 'administrador'");
+                $stmt->execute(['id' => $id_empleado]);
+                $emp = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($emp && $password === 'admin123') {
+                    $_SESSION['usuario'] = $emp['nombres'] . ' ' . $emp['apellidos'];
+                    $_SESSION['rol']     = 'administrador';
+                    header("Location: index.php");
+                    exit;
+                } else {
+                    $error = "ID de administrador o contraseña incorrectos.";
+                }
             } else {
-                $error = "Contraseña de administrador incorrecta.";
+                $error = "Por favor ingrese su ID de empleado y contraseña.";
             }
+
         } elseif ($usuario_rol === 'cajero') {
-            if ($password === 'cajero123') {
-                $_SESSION['usuario'] = 'Cajero';
-                $_SESSION['rol']     = 'cajero';
-                header("Location: index.php");
-                exit;
+            if (!empty($id_empleado) && !empty($password)) {
+                $stmt = $conexion->prepare("SELECT * FROM empleados WHERE id_empleado = :id AND rol = 'cajero'");
+                $stmt->execute(['id' => $id_empleado]);
+                $emp = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($emp && $password === 'cajero123') {
+                    $_SESSION['usuario'] = $emp['nombres'] . ' ' . $emp['apellidos'];
+                    $_SESSION['rol']     = 'cajero';
+                    $_SESSION['id_cajero'] = $emp['id_empleado'];
+                    header("Location: index.php");
+                    exit;
+                } else {
+                    $error = "ID de cajero o contraseña incorrectos.";
+                }
             } else {
-                $error = "Contraseña de cajero incorrecta.";
+                $error = "Por favor ingrese su ID de empleado y contraseña.";
             }
+
         } elseif ($usuario_rol === 'cliente') {
             if (!empty($cedula) && !empty($password)) {
                 if ($password === 'cliente123') {
@@ -43,19 +63,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         header("Location: index.php");
                         exit;
                     } else {
-                        $error = "La cédula ingresada no se encuentra registrada en el banco.";
+                        $error = "La cedula ingresada no se encuentra registrada en el banco.";
                     }
                 } else {
-                    $error = "Contraseña general de cliente incorrecta.";
+                    $error = "Contraseña de cliente incorrecta.";
                 }
             } else {
-                $error = "Por favor ingresa tu cédula y contraseña.";
+                $error = "Por favor ingrese su cedula y contraseña.";
             }
         } else {
-            $error = "Por favor selecciona un rol válido.";
+            $error = "Por favor seleccione un rol valido.";
         }
     } catch (PDOException $e) {
-        $error = "Error de conexión a la base de datos: " . $e->getMessage();
+        $error = "Error de conexion a la base de datos: " . $e->getMessage();
     }
 }
 ?>
@@ -123,14 +143,22 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
     </style>
     <script>
-        function toggleCedula(select) {
+        function actualizarCampos() {
+            var rol = document.getElementById('usuario-select').value;
             var campoCedula = document.getElementById('campo-cedula');
-            if (select.value === 'cliente') {
+            var campoIdEmpleado = document.getElementById('campo-id-empleado');
+            
+            campoCedula.style.display = 'none';
+            campoIdEmpleado.style.display = 'none';
+            document.getElementById('cedula-input').required = false;
+            document.getElementById('id-empleado-input').required = false;
+
+            if (rol === 'cliente') {
                 campoCedula.style.display = 'block';
                 document.getElementById('cedula-input').required = true;
-            } else {
-                campoCedula.style.display = 'none';
-                document.getElementById('cedula-input').required = false;
+            } else if (rol === 'administrador' || rol === 'cajero') {
+                campoIdEmpleado.style.display = 'block';
+                document.getElementById('id-empleado-input').required = true;
             }
         }
     </script>
@@ -152,16 +180,21 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 <form method="POST" action="login.php">
                     <div class="mb-3">
                         <label class="form-label">Seleccionar Tipo de Usuario</label>
-                        <select name="usuario" id="usuario-select" class="form-select form-control-custom" onchange="toggleCedula(this)" required>
-                            <option value="" disabled selected>-- Elige una opción --</option>
+                        <select name="usuario" id="usuario-select" class="form-select form-control-custom" onchange="actualizarCampos()" required>
+                            <option value="" disabled selected>-- Elige una opcion --</option>
                             <option value="administrador">Administrador</option>
                             <option value="cajero">Cajero</option>
                             <option value="cliente">Cliente</option>
                         </select>
                     </div>
 
+                    <div class="mb-3" id="campo-id-empleado" style="display: none;">
+                        <label class="form-label">ID de Empleado</label>
+                        <input type="text" name="id_empleado" id="id-empleado-input" class="form-control form-control-custom" placeholder="Ej: 2001001001">
+                    </div>
+
                     <div class="mb-3" id="campo-cedula" style="display: none;">
-                        <label class="form-label">Número de Cédula (ID Cliente)</label>
+                        <label class="form-label">Numero de Cedula (ID Cliente)</label>
                         <input type="text" name="cedula" id="cedula-input" class="form-control form-control-custom" placeholder="Ej: 1006123456">
                     </div>
 
@@ -170,7 +203,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         <input type="password" name="password" class="form-control form-control-custom" placeholder="••••••••" required>
                     </div>
 
-                    <button type="submit" class="btn btn-custom w-100 mt-2">Iniciar Sesión</button>
+                    <button type="submit" class="btn btn-custom w-100 mt-2">Iniciar Sesion</button>
                 </form>
             </div>
         </div>
