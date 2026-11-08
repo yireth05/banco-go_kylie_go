@@ -136,14 +136,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                     <button type="submit" class="btn btn-custom w-100 mt-2">Iniciar Sesión</button>
                 </form>
-
-                <!-- Botón para ir a Crear Cliente -->
-                <div class="text-center mt-4 pt-3 border-top">
-                    <p class="text-muted small mb-2">¿Necesitas registrar un cliente nuevo?</p>
-                    <a href="Crearcliente.php" class="btn btn-outline-secondary w-100 rounded-pill py-2 fw-semibold" style="border-color: var(--color-87a7d0); color: var(--color-0e1b48);">
-                        Crear Nuevo Cliente ➔
-                    </a>
-                </div>
             </div>
         </div>
     </div>
