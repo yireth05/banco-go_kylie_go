@@ -98,7 +98,7 @@ try {
                                     </td>
                                     <td><code><?php echo htmlspecialchars($row['usuario_bd']); ?></code></td>
                                 </tr>
-                            <?endforeach; ?>
+                            <?php endforeach; ?>
                         <?php else: ?>
                             <tr><td colspan="7" class="text-center text-muted py-4">No hay registros de transacciones en la bitácora todavía.</td></tr>
                         <?php endif; ?>
