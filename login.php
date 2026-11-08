@@ -12,38 +12,30 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $id_empleado = trim($_POST['id_empleado'] ?? '');
 
     try {
-        if ($usuario_rol === 'administrador') {
+        if ($usuario_rol === 'administrador' || $usuario_rol === 'cajero') {
             if (!empty($id_empleado) && !empty($password)) {
-                $stmt = $conexion->prepare("SELECT * FROM empleados WHERE id_empleado = :id AND rol = 'administrador'");
-                $stmt->execute(['id' => $id_empleado]);
+                $stmt = $conexion->prepare("SELECT * FROM empleados WHERE id_empleado = :id AND rol = :rol");
+                $stmt->execute(['id' => $id_empleado, 'rol' => $usuario_rol]);
                 $emp = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                if ($emp && $password === 'admin123') {
-                    $_SESSION['usuario'] = $emp['nombres'] . ' ' . $emp['apellidos'];
-                    $_SESSION['rol']     = 'administrador';
-                    header("Location: index.php");
-                    exit;
-                } else {
-                    $error = "ID de administrador o contraseña incorrectos.";
-                }
-            } else {
-                $error = "Por favor ingrese su ID de empleado y contraseña.";
-            }
+                if ($emp) {
+                    // Extraer el primer nombre y pasarlo a minúsculas
+                    $primer_nombre = explode(' ', trim($emp['nombres']))[0];
+                    $password_esperado = strtolower($primer_nombre) . '123';
 
-        } elseif ($usuario_rol === 'cajero') {
-            if (!empty($id_empleado) && !empty($password)) {
-                $stmt = $conexion->prepare("SELECT * FROM empleados WHERE id_empleado = :id AND rol = 'cajero'");
-                $stmt->execute(['id' => $id_empleado]);
-                $emp = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                if ($emp && $password === 'cajero123') {
-                    $_SESSION['usuario'] = $emp['nombres'] . ' ' . $emp['apellidos'];
-                    $_SESSION['rol']     = 'cajero';
-                    $_SESSION['id_cajero'] = $emp['id_empleado'];
-                    header("Location: index.php");
-                    exit;
+                    if ($password === $password_esperado) {
+                        $_SESSION['usuario'] = $emp['nombres'] . ' ' . $emp['apellidos'];
+                        $_SESSION['rol']     = $emp['rol'];
+                        if ($usuario_rol === 'cajero') {
+                            $_SESSION['id_cajero'] = $emp['id_empleado'];
+                        }
+                        header("Location: index.php");
+                        exit;
+                    } else {
+                        $error = "Contraseña incorrecta.";
+                    }
                 } else {
-                    $error = "ID de cajero o contraseña incorrectos.";
+                    $error = "El ID de empleado no existe o no corresponde al rol seleccionado.";
                 }
             } else {
                 $error = "Por favor ingrese su ID de empleado y contraseña.";
@@ -51,31 +43,35 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         } elseif ($usuario_rol === 'cliente') {
             if (!empty($cedula) && !empty($password)) {
-                if ($password === 'cliente123') {
-                    $stmt = $conexion->prepare("SELECT * FROM clientes WHERE id_cliente = :cedula");
-                    $stmt->execute(['cedula' => $cedula]);
-                    $cliente_data = $stmt->fetch(PDO::FETCH_ASSOC);
+                $stmt = $conexion->prepare("SELECT * FROM clientes WHERE id_cliente = :cedula");
+                $stmt->execute(['cedula' => $cedula]);
+                $cliente_data = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                    if ($cliente_data) {
+                if ($cliente_data) {
+                    // Extraer el primer nombre del cliente y pasarlo a minúsculas
+                    $primer_nombre = explode(' ', trim($cliente_data['nomb_cli']))[0];
+                    $password_esperado = strtolower($primer_nombre) . '123';
+
+                    if ($password === $password_esperado) {
                         $_SESSION['usuario']    = $cliente_data['nomb_cli'] . ' ' . $cliente_data['apelli_cli'];
                         $_SESSION['rol']        = 'cliente';
                         $_SESSION['id_cliente'] = $cliente_data['id_cliente'];
                         header("Location: index.php");
                         exit;
                     } else {
-                        $error = "La cedula ingresada no se encuentra registrada en el banco.";
+                        $error = "Contraseña de cliente incorrecta.";
                     }
                 } else {
-                    $error = "Contraseña de cliente incorrecta.";
+                    $error = "La cédula ingresada no se encuentra registrada en el banco.";
                 }
             } else {
-                $error = "Por favor ingrese su cedula y contraseña.";
+                $error = "Por favor ingrese su cédula y contraseña.";
             }
         } else {
-            $error = "Por favor seleccione un rol valido.";
+            $error = "Por favor seleccione un rol válido.";
         }
     } catch (PDOException $e) {
-        $error = "Error de conexion a la base de datos: " . $e->getMessage();
+        $error = "Error de conexión a la base de datos: " . $e->getMessage();
     }
 }
 ?>
@@ -181,7 +177,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     <div class="mb-3">
                         <label class="form-label">Seleccionar Tipo de Usuario</label>
                         <select name="usuario" id="usuario-select" class="form-select form-control-custom" onchange="actualizarCampos()" required>
-                            <option value="" disabled selected>-- Elige una opcion --</option>
+                            <option value="" disabled selected>-- Elige una opción --</option>
                             <option value="administrador">Administrador</option>
                             <option value="cajero">Cajero</option>
                             <option value="cliente">Cliente</option>
@@ -194,7 +190,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     </div>
 
                     <div class="mb-3" id="campo-cedula" style="display: none;">
-                        <label class="form-label">Numero de Cedula (ID Cliente)</label>
+                        <label class="form-label">Número de Cédula (ID Cliente)</label>
                         <input type="text" name="cedula" id="cedula-input" class="form-control form-control-custom" placeholder="Ej: 1006123456">
                     </div>
 
@@ -203,7 +199,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         <input type="password" name="password" class="form-control form-control-custom" placeholder="••••••••" required>
                     </div>
 
-                    <button type="submit" class="btn btn-custom w-100 mt-2">Iniciar Sesion</button>
+                    <button type="submit" class="btn btn-custom w-100 mt-2">Iniciar Sesión</button>
                 </form>
             </div>
         </div>
