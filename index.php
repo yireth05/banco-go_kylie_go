@@ -1,5 +1,5 @@
 <?php
-// index.php - Panel Principal con Nombre de Usuario Dinámico
+// index.php - Panel Principal con Vistas por Rol (Cliente, Cajero, Administrador)
 session_start();
 require_once 'conexionDB.php';
 
@@ -10,8 +10,6 @@ if (!isset($_SESSION['rol'])) {
 
 $rol = $_SESSION['rol'];
 $nombre_usuario = "Usuario";
-
-// Obtener el nombre real según el tipo de rol y su identificador en sesión
 $usuario_id = $_SESSION['usuario_id'] ?? $_SESSION['id_cliente'] ?? null;
 
 try {
@@ -22,12 +20,8 @@ try {
         if ($res) {
             $nombre_usuario = $res['nomb_cli'] . ' ' . $res['apelli_cli'];
         }
-    } 
-    elseif ($rol === 'cajero' || $rol === 'administrador') {
-        // Si el cajero/admin se identifica por ID o nombre de rol en la sesión
+    } else {
         $nombre_usuario = ucfirst($rol) . " del Sistema";
-        
-        // Si guardas el documento o nombre del empleado en la sesión, puedes consultarlo así:
         if ($usuario_id) {
             $stmt = $conexion->prepare("SELECT nomb_cli, apelli_cli FROM clientes WHERE id_cliente = ?");
             $stmt->execute([$usuario_id]);
@@ -74,18 +68,6 @@ try {
             overflow: hidden;
         }
 
-        .welcome-hero::after {
-            content: '';
-            position: absolute;
-            right: -50px;
-            bottom: -50px;
-            width: 200px;
-            height: 200px;
-            background: rgba(193, 141, 180, 0.15);
-            border-radius: 50%;
-            pointer-events: none;
-        }
-
         .card-menu {
             border: none;
             border-radius: 18px;
@@ -118,13 +100,11 @@ try {
             color: #ffffff;
             border-radius: 50rem;
             font-weight: 600;
-            transition: all 0.2s ease;
         }
 
         .btn-custom:hover {
             background-color: var(--color-27425d);
             color: #ffffff;
-            transform: scale(1.01);
         }
 
         .btn-outline-custom {
@@ -133,7 +113,6 @@ try {
             border-radius: 50rem;
             font-weight: 600;
             background: transparent;
-            transition: all 0.2s ease;
         }
 
         .btn-outline-custom:hover {
@@ -148,7 +127,7 @@ try {
 
     <div class="container py-5">
         
-        <!-- Hero de Bienvenida Dinámico con Nombre -->
+        <!-- Hero de Bienvenida -->
         <div class="welcome-hero p-4 p-md-5 mb-5">
             <div class="row align-items-center">
                 <div class="col-md-10">
@@ -159,13 +138,77 @@ try {
                         ¡Bienvenido, <span style="color: var(--color-c18db4);"><?php echo htmlspecialchars($nombre_usuario); ?></span>!
                     </h1>
                     <p class="fs-5 mb-0 opacity-75">
-                        Estás operando bajo el perfil de <span class="badge text-bg-warning text-uppercase px-3 py-2"><?php echo htmlspecialchars($rol); ?></span>
+                        Estás operando bajo el perfil de <span class="badge text-bg-danger text-uppercase px-3 py-2"><?php echo htmlspecialchars($rol); ?></span>
                     </p>
                 </div>
             </div>
         </div>
 
-        <?php if ($rol === 'cajero'): ?>
+        <?php if ($rol === 'administrador'): ?>
+            <!-- SECCIÓN ADMINISTRADOR (TOTAL ACCESO RBAC) -->
+            <div class="d-flex align-items-center justify-content-between mb-4">
+                <h3 class="fw-bold m-0" style="color: var(--color-0e1b48);">
+                    <i class="bi bi-shield-lock-fill me-2"></i>Panel de Administración y Auditoría Global
+                </h3>
+            </div>
+
+            <div class="row g-4">
+                <!-- Auditoría y Bitácora General -->
+                <div class="col-md-6 col-lg-3">
+                    <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
+                        <div class="icon-box"><i class="bi bi-journal-check"></i></div>
+                        <h5 class="fw-bold text-dark">Auditoría del Sistema</h5>
+                        <p class="text-muted small flex-grow-1">Revisar registros automáticos de la bitácora y monitorear transacciones.</p>
+                        <a href="admin_bitacora.php" class="btn btn-sm btn-custom w-100 py-2 mt-auto">
+                            <i class="bi bi-list-columns-reverse me-1"></i> Ver Bitácora (Audit)
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Control de Sucursales y Red Bancaria -->
+                <div class="col-md-6 col-lg-3">
+                    <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
+                        <div class="icon-box"><i class="bi bi-building"></i></div>
+                        <h5 class="fw-bold text-dark">Gestión de Sucursales</h5>
+                        <p class="text-muted small flex-grow-1">Administrar sucursales, cajeros automáticos (ATM) y oficinas.</p>
+                        <a href="sucursales.php" class="btn btn-sm btn-custom w-100 py-2 mt-auto">
+                            <i class="bi bi-diagram-3-fill me-1"></i> Administrar Sucursales
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Gestión Global de Clientes y Cuentas -->
+                <div class="col-md-6 col-lg-3">
+                    <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
+                        <div class="icon-box"><i class="bi bi-person-gear"></i></div>
+                        <h5 class="fw-bold text-dark">Control de Usuarios</h5>
+                        <p class="text-muted small flex-grow-1">Supervisión completa de clientes, cuentas bancarias y préstamos.</p>
+                        <a href="Crearcliente.php" class="btn btn-sm btn-custom w-100 mb-2 py-2">
+                            <i class="bi bi-person-plus-fill me-1"></i> Registrar Cliente
+                        </a>
+                        <a href="crear_cuenta.php" class="btn btn-sm btn-outline-custom w-100 py-2">
+                            <i class="bi bi-card-checklist me-1"></i> Gestionar Cuentas
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Operaciones y Ejecución de Funciones Almacenadas -->
+                <div class="col-md-6 col-lg-3">
+                    <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
+                        <div class="icon-box"><i class="bi bi-cpu-fill"></i></div>
+                        <h5 class="fw-bold text-dark">Operaciones Directas</h5>
+                        <p class="text-muted small flex-grow-1">Ejecución transaccional y supervisión de préstamos.</p>
+                        <a href="Crear-RealizarTransacciones.php" class="btn btn-sm btn-custom w-100 mb-2 py-2">
+                            <i class="bi bi-cash-stack me-1"></i> Transacción Directa
+                        </a>
+                        <a href="gestion_prestamos.php" class="btn btn-sm btn-outline-custom w-100 py-2">
+                            <i class="bi bi-bank me-1"></i> Aprobar Préstamos
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        <?php elseif ($rol === 'cajero'): ?>
             <!-- SECCIÓN CAJERO -->
             <div class="d-flex align-items-center justify-content-between mb-4">
                 <h3 class="fw-bold m-0" style="color: var(--color-0e1b48);">
@@ -179,15 +222,12 @@ try {
                         <div class="icon-box"><i class="bi bi-people-fill"></i></div>
                         <h5 class="fw-bold text-dark">Gestión de Clientes</h5>
                         <p class="text-muted small flex-grow-1">Registrar nuevos clientes, actualizar datos y realizar búsquedas.</p>
-                        
                         <a href="Crearcliente.php" class="btn btn-sm btn-custom w-100 mb-2 py-2">
                             <i class="bi bi-person-plus-fill me-1"></i> Nuevo Cliente
                         </a>
-                        <form action="editar_cliente.php" method="GET" class="w-100">
-                            <button type="submit" class="btn btn-sm btn-outline-custom w-100 py-2">
-                                <i class="bi bi-pencil-square me-1"></i> Actualizar Datos
-                            </button>
-                        </form>
+                        <a href="editar_cliente.php" class="btn btn-sm btn-outline-custom w-100 py-2">
+                            <i class="bi bi-pencil-square me-1"></i> Actualizar Datos
+                        </a>
                     </div>
                 </div>
 
@@ -196,7 +236,6 @@ try {
                         <div class="icon-box"><i class="bi bi-credit-card-2-front-fill"></i></div>
                         <h5 class="fw-bold text-dark">Cuentas y Préstamos</h5>
                         <p class="text-muted small flex-grow-1">Abrir o modificar cuentas, registrar o actualizar préstamos.</p>
-                        
                         <a href="crear_cuenta.php" class="btn btn-sm btn-custom w-100 mb-2 py-2">
                             <i class="bi bi-plus-circle-fill me-1"></i> Abrir Cuenta
                         </a>
@@ -211,7 +250,6 @@ try {
                         <div class="icon-box"><i class="bi bi-arrow-left-right"></i></div>
                         <h5 class="fw-bold text-dark">Ventanilla Transacciones</h5>
                         <p class="text-muted small flex-grow-1">Realizar depósitos/retiros y consultar historial de operaciones.</p>
-                        
                         <a href="Crear-RealizarTransacciones.php" class="btn btn-sm btn-custom w-100 mb-2 py-2">
                             <i class="bi bi-cash-stack me-1"></i> Hacer Transacción
                         </a>
@@ -226,8 +264,7 @@ try {
                         <div class="icon-box"><i class="bi bi-diagram-3-fill"></i></div>
                         <h5 class="fw-bold text-dark">Consultas de Red</h5>
                         <p class="text-muted small flex-grow-1">Consultar sucursales, cajeros, tipos de cuenta y transacciones.</p>
-                        
-                        <a href="admin_configuraciones.php" class="btn btn-sm btn-custom w-100 py-2 mt-auto">
+                        <a href="sucursales.php" class="btn btn-sm btn-custom w-100 py-2 mt-auto">
                             <i class="bi bi-building me-1"></i> Ver Red Bancaria
                         </a>
                     </div>
@@ -270,25 +307,9 @@ try {
                         <div class="icon-box"><i class="bi bi-send-fill"></i></div>
                         <h5 class="fw-bold text-dark">Transferencias</h5>
                         <p class="text-muted small flex-grow-1">Realizar transferencias y revisar el historial de transacciones.</p>
-                        
-                        <div class="dropdown w-100 mt-auto">
-                            <button class="btn btn-sm btn-custom w-100 dropdown-toggle py-2" type="button" data-bs-toggle="dropdown">
-                                Opciones
-                            </button>
-                            <ul class="dropdown-menu shadow border-0 mt-2 p-2 w-100">
-                                <li>
-                                    <a class="dropdown-item rounded py-2" href="Crear-RealizarTransacciones.php">
-                                        <i class="bi bi-arrow-right-circle me-2"></i>Hacer transferencia
-                                    </a>
-                                </li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li>
-                                    <a class="dropdown-item rounded py-2" href="historial_transacciones.php">
-                                        <i class="bi bi-clock-history me-2"></i>Ver historial
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
+                        <a href="Crear-RealizarTransacciones.php" class="btn btn-sm btn-custom w-100 py-2 mt-auto">
+                            <i class="bi bi-arrow-right-circle me-1"></i> Hacer Transferencia
+                        </a>
                     </div>
                 </div>
 
@@ -296,9 +317,9 @@ try {
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <div class="icon-box"><i class="bi bi-info-circle-fill"></i></div>
                         <h5 class="fw-bold text-dark">Servicios Bancarios</h5>
-                        <p class="text-muted small flex-grow-1">Consultar tipos de cuenta y servicios disponibles.</p>
-                        <a href="admin_configuraciones.php" class="btn btn-sm btn-custom w-100 py-2 mt-auto">
-                            <i class="bi bi-building me-1"></i> Ver Info
+                        <p class="text-muted small flex-grow-1">Consultar sucursales y canales de atención disponibles.</p>
+                        <a href="sucursales.php" class="btn btn-sm btn-custom w-100 py-2 mt-auto">
+                            <i class="bi bi-building me-1"></i> Ver Sucursales
                         </a>
                     </div>
                 </div>
