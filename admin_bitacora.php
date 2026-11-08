@@ -43,28 +43,66 @@ try {
     <style>
         :root {
             --color-0e1b48: #0E1B48;
+            --color-c18db4: #C18DB4;
+            --color-e2cad8: #E2CAD8;
+            --color-87a7d0: #87A7D0;
             --color-27425d: #27425D;
+            --color-0e1f2f: #0E1F2F;
         }
-        body { background-color: #f4f6f9; font-family: sans-serif; }
+        body { 
+            background: linear-gradient(135deg, #f8f9fa 0%, var(--color-e2cad8) 100%);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            min-height: 100vh;
+        }
+        .card-custom { 
+            border-radius: 16px; 
+            border: none; 
+            box-shadow: 0 8px 24px rgba(14, 27, 72, 0.08); 
+        }
+        .table-dark {
+            background-color: var(--color-0e1b48);
+        }
+        .table-dark th {
+            background-color: var(--color-0e1b48);
+            color: #ffffff;
+            border-color: var(--color-27425d);
+        }
+        .btn-custom {
+            background-color: var(--color-c18db4);
+            color: #ffffff;
+            border-radius: 50rem;
+            border: none;
+            font-weight: 600;
+        }
+        .btn-custom:hover {
+            background-color: var(--color-87a7d0);
+            color: var(--color-0e1b48);
+        }
+        .text-brand {
+            color: var(--color-0e1b48);
+        }
     </style>
 </head>
 <body>
-    <div class="container py-5">
+    <?php include 'navbar.php'; ?>
+    <div class="container py-5 mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h2 class="fw-bold" style="color: var(--color-0e1b48);">Bitácora de Transacciones</h2>
-                <p class="text-muted mb-0">Registro y monitoreo de operaciones de transacciones en tiempo real.</p>
+                <h2 class="fw-bold text-brand">Bitácora de Transacciones y Auditoría</h2>
+                <p class="text-muted mb-0">Registro y monitoreo de operaciones de la base de datos en tiempo real.</p>
             </div>
-            <a href="index.php" class="btn btn-outline-secondary rounded-pill">Volver al Panel</a>
+            <a href="index.php" class="btn btn-custom px-4 py-2">← Volver al Panel</a>
         </div>
 
         <?php if (isset($error)): ?>
-            <div class="alert alert-danger"><?php echo $error; ?></div>
+            <div class="alert alert-danger rounded-4 border-0 shadow-sm" style="background-color: #f8d7da; color: #842029;">
+                <?php echo htmlspecialchars($error); ?>
+            </div>
         <?php endif; ?>
 
-        <div class="card shadow-sm border-0 rounded-4 p-4 bg-white">
+        <div class="card shadow-sm border-0 rounded-4 p-4 bg-white card-custom">
             <div class="table-responsive">
-                <table class="table table-hover align-middle">
+                <table class="table table-hover align-middle mb-0">
                     <thead class="table-dark">
                         <tr>
                             <th>ID Bitácora</th>
@@ -80,8 +118,8 @@ try {
                         <?php if (!empty($bitacora)): ?>
                             <?php foreach ($bitacora as $row): ?>
                                 <tr>
-                                    <td>#<?php echo $row['id_bitacora']; ?></td>
-                                    <td><?php echo $row['fecha_operacion']; ?></td>
+                                    <td><strong>#<?php echo $row['id_bitacora']; ?></strong></td>
+                                    <td><?php echo date('d/m/Y H:i:s', strtotime($row['fecha_operacion'])); ?></td>
                                     <td>
                                         <span class="badge bg-<?php echo ($row['operacion'] === 'INSERT') ? 'success' : (($row['operacion'] === 'UPDATE') ? 'warning text-dark' : 'danger'); ?>">
                                             <?php echo $row['operacion']; ?>
@@ -96,7 +134,7 @@ try {
                                             <span class="text-muted">N/A</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td><code><?php echo htmlspecialchars($row['usuario_bd']); ?></code></td>
+                                    <td><code class="text-primary"><?php echo htmlspecialchars($row['usuario_bd']); ?></code></td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
