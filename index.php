@@ -148,26 +148,23 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
         <h5 class="fw-bold text-dark">Transferencias y Movimientos</h5>
         <p class="text-muted small">Realizar transferencias y revisar el historial de transacciones.</p>
         
-        <!-- Menú desplegable nativo de Bootstrap (sin JS externo) -->
-        <div class="dropdown mt-auto">
-            <button class="btn btn-sm btn-custom w-100 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                Transferir / Ver Historial
-            </button>
-            <ul class="dropdown-menu w-100 shadow-sm border-0 mt-2 p-2">
-                <li>
-                    <a class="dropdown-item rounded py-2 fw-semibold text-dark" href="Crear-RealizarTransacciones.php">
-                        <i class="bi bi-arrow-left-right me-2"></i> Hacer transferencia
-                    </a>
-                </li>
-                <li><hr class="dropdown-divider"></li>
-                <li>
-                    <a class="dropdown-item rounded py-2 fw-semibold text-dark" href="historial_transacciones.php">
-                        <i class="bi bi-clock-history me-2"></i> Ver su historial
-                    </a>
-                </li>
-            </ul>
-        </div>
-    </div>
+       <div class="dropdown mt-auto w-100">
+    <button class="btn btn-sm btn-custom w-100 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+        Transferir / Ver Historial
+    </button>
+    <ul class="dropdown-menu shadow-sm border-0 mt-2 p-2 w-100" style="min-width: 220px;">
+        <li>
+            <a class="dropdown-item rounded py-2 fw-semibold text-dark text-wrap" href="Crear-RealizarTransacciones.php">
+                <i class="bi bi-arrow-left-right me-2"></i> Hacer transferencia
+            </a>
+        </li>
+        <li><hr class="dropdown-divider"></li>
+        <li>
+            <a class="dropdown-item rounded py-2 fw-semibold text-dark text-wrap" href="historial_transacciones.php">
+                <i class="bi bi-clock-history me-2"></i> Ver su historial
+            </a>
+        </li>
+    </ul>
 </div>
                 <div class="col-md-4">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
