@@ -1,5 +1,5 @@
 <?php
-// editar_cliente.php - Listado, buscador y formulario de actualización de clientes
+// editar_cliente.php - Edición de datos y creación de cuentas para cajeros/admins
 session_start();
 require_once 'conexionDB.php';
 
@@ -9,13 +9,27 @@ if (!isset($_SESSION['rol'])) {
 }
 
 $rol = $_SESSION['rol'];
-$usuario_id = $_SESSION['usuario_id'] ?? $_SESSION['id_cliente'] ?? null;
 $error = "";
 $mensaje = "";
 
-// 1. SI ES CLIENTE: Edita solo sus propios datos
+// Solo cajeros y administradores pueden acceder a este módulo de gestión
 if ($rol === 'cliente') {
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    header("Location: index.php");
+    exit;
+}
+
+$id_cliente = $_GET['id'] ?? null;
+
+if (!$id_cliente) {
+    header("Location: index.php");
+    exit;
+}
+
+// Procesar formularios enviados por POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $accion = $_POST['accion'] ?? '';
+
+    if ($accion === 'actualizar_datos') {
         $nomb = $_POST['nomb_cli'] ?? '';
         $apelli = $_POST['apelli_cli'] ?? '';
         $tel = $_POST['tel_cli'] ?? '';
@@ -23,85 +37,65 @@ if ($rol === 'cliente') {
         
         try {
             $stmt = $conexion->prepare("UPDATE clientes SET nomb_cli = ?, apelli_cli = ?, tel_cli = ?, dir_cli = ? WHERE id_cliente = ?");
-            $stmt->execute([$nomb, $apelli, $tel, $dir, $usuario_id]);
-            $mensaje = "¡Tus datos han sido actualizados exitosamente!";
+            $stmt->execute([$nomb, $apelli, $tel, $dir, $id_cliente]);
+            $mensaje = "¡Datos personales actualizados exitosamente!";
         } catch (PDOException $e) {
-            $error = "Error al actualizar: " . $e->getMessage();
+            $error = "Error al actualizar los datos: " . $e->getMessage();
         }
-    }
-
-    try {
-        $stmt = $conexion->prepare("SELECT * FROM clientes WHERE id_cliente = ?");
-        $stmt->execute([$usuario_id]);
-        $cliente = $stmt->fetch(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) {
-        $error = "Error al cargar datos: " . $e->getMessage();
-    }
-} 
-else {
-    // 2. SI ES CAJERO O ADMINISTRADOR:
-    $id_editar_personal = $_GET['id'] ?? null;
-
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $id_editar_personal) {
-        $nomb = $_POST['nomb_cli'] ?? '';
-        $apelli = $_POST['apelli_cli'] ?? '';
-        $tel = $_POST['tel_cli'] ?? '';
-        $dir = $_POST['dir_cli'] ?? '';
+    } 
+    elseif ($accion === 'crear_cuenta') {
+        $cod_tipo_cuenta = $_POST['cod_tipo_cuenta'] ?? '';
+        $saldo_inicial = $_POST['saldo_inicial'] ?? 0.00;
         
+        // Generar un número de cuenta aleatorio único de 10 dígitos
+        $num_cuenta = '99' . mt_rand(10000000, 99999999);
+
         try {
-            $stmt = $conexion->prepare("UPDATE clientes SET nomb_cli = ?, apelli_cli = ?, tel_cli = ?, dir_cli = ? WHERE id_cliente = ?");
-            $stmt->execute([$nomb, $apelli, $tel, $dir, $id_editar_personal]);
-            $mensaje = "¡Datos del cliente actualizados exitosamente!";
+            $stmt = $conexion->prepare("
+                INSERT INTO cuentas (num_cuenta, id_cliente, cod_tipo_cuenta, saldo, fecha_apertura) 
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ");
+            $stmt->execute([$num_cuenta, $id_cliente, $cod_tipo_cuenta, $saldo_inicial]);
+            $mensaje = "¡Cuenta bancaria creada exitosamente con el N°: " . $num_cuenta . "!";
         } catch (PDOException $e) {
-            $error = "Error al actualizar el cliente: " . $e->getMessage();
+            $error = "Error al crear la cuenta: " . $e->getMessage();
         }
+    }
+}
+
+// Obtener la información actual del cliente
+try {
+    $stmt = $conexion->prepare("SELECT * FROM clientes WHERE id_cliente = ?");
+    $stmt->execute([$id_cliente]);
+    $cliente = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$cliente) {
+        header("Location: index.php");
+        exit;
     }
 
-    $cliente_a_editar = null;
-    if ($id_editar_personal) {
-        try {
-            $stmt = $conexion->prepare("SELECT * FROM clientes WHERE id_cliente = ?");
-            $stmt->execute([$id_editar_personal]);
-            $cliente_a_editar = $stmt->fetch(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) {
-            $error = "Error al obtener el cliente: " . $e->getMessage();
-        }
-    } else {
-        $busqueda = trim($_GET['q'] ?? '');
-        try {
-            if ($busqueda !== '') {
-                // Consulta segura compatible con PostgreSQL
-                $stmt = $conexion->prepare("
-                    SELECT DISTINCT c.*, cu.num_cuenta, tc.nomb_tipo_cuenta 
-                    FROM clientes c
-                    LEFT JOIN cuentas cu ON c.id_cliente = cu.id_cliente
-                    LEFT JOIN tipo_cuentas tc ON cu.cod_tipo_cuenta = tc.cod_tipo_cuenta
-                    WHERE LOWER(c.nomb_cli) LIKE LOWER(?) OR LOWER(c.apelli_cli) LIKE LOWER(?)
-                    ORDER BY c.id_cliente DESC
-                ");
-                $like = "%" . $busqueda . "%";
-                $stmt->execute([$like, $like]);
-            } else {
-                $stmt = $conexion->query("
-                    SELECT DISTINCT c.*, cu.num_cuenta, tc.nomb_tipo_cuenta 
-                    FROM clientes c
-                    LEFT JOIN cuentas cu ON c.id_cliente = cu.id_cliente
-                    LEFT JOIN tipo_cuentas tc ON cu.cod_tipo_cuenta = tc.cod_tipo_cuenta
-                    ORDER BY c.id_cliente DESC
-                ");
-            }
-            $clientes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) {
-            $error = "Error al obtener el listado de clientes: " . $e->getMessage();
-        }
-    }
+    // Consultar si el cliente ya tiene cuentas asociadas
+    $stmt_cuentas = $conexion->prepare("
+        SELECT cu.*, tc.nomb_tipo_cuenta 
+        FROM cuentas cu 
+        JOIN tipo_cuentas tc ON cu.cod_tipo_cuenta = tc.cod_tipo_cuenta 
+        WHERE cu.id_cliente = ?
+    ");
+    $stmt_cuentas->execute([$id_cliente]);
+    $cuentas_cliente = $stmt_cuentas->fetchAll(PDO::FETCH_ASSOC);
+
+    // Obtener los tipos de cuenta disponibles para el formulario de creación
+    $tipos_cuenta = $conexion->query("SELECT * FROM tipo_cuentas")->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    $error = "Error al cargar la información: " . $e->getMessage();
 }
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Gestión y Actualización de Clientes - Banco Villavicencio</title>
+    <title>Actualizar Cliente y Cuentas - Banco Villavicencio</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
@@ -121,146 +115,101 @@ else {
     <?php include 'navbar.php'; ?>
     <div class="container py-5 mt-3">
         
-        <?php if ($rol === 'cliente'): ?>
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2 class="fw-bold" style="color: var(--color-0e1b48);">Mis Datos Personales</h2>
-                    <p class="text-muted mb-0">Actualiza tu información de contacto.</p>
-                </div>
-                <a href="index.php" class="btn btn-custom px-4 py-2">← Volver al Panel</a>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold" style="color: var(--color-0e1b48);">Gestión Integral de Cliente</h2>
+                <p class="text-muted mb-0">Cliente: <strong><?php echo htmlspecialchars($cliente['nomb_cli'] . ' ' . $cliente['apelli_cli']); ?></strong> (ID: #<?php echo $cliente['id_cliente']; ?>)</p>
             </div>
+            <a href="index.php" class="btn btn-custom px-4 py-2">← Volver al Panel</a>
+        </div>
 
-            <?php if ($error): ?><div class="alert alert-danger rounded-4"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
-            <?php if ($mensaje): ?><div class="alert alert-success rounded-4"><?php echo htmlspecialchars($mensaje); ?></div><?php endif; ?>
+        <?php if ($error): ?><div class="alert alert-danger rounded-4"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
+        <?php if ($mensaje): ?><div class="alert alert-success rounded-4"><?php echo htmlspecialchars($mensaje); ?></div><?php endif; ?>
 
-            <div class="card card-custom p-4 bg-white">
-                <form method="POST">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Nombres</label>
-                        <input type="text" name="nomb_cli" class="form-control" value="<?php echo htmlspecialchars($cliente['nomb_cli'] ?? ''); ?>" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Apellidos</label>
-                        <input type="text" name="apelli_cli" class="form-control" value="<?php echo htmlspecialchars($cliente['apelli_cli'] ?? ''); ?>" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Teléfono</label>
-                        <input type="text" name="tel_cli" class="form-control" value="<?php echo htmlspecialchars($cliente['tel_cli'] ?? ''); ?>">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Dirección</label>
-                        <input type="text" name="dir_cli" class="form-control" value="<?php echo htmlspecialchars($cliente['dir_cli'] ?? ''); ?>">
-                    </div>
-                    <button type="submit" class="btn btn-custom w-100 py-2">Guardar Cambios</button>
-                </form>
-            </div>
-
-        <?php else: ?>
-            
-            <?php if ($id_editar_personal && $cliente_a_editar): ?>
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div>
-                        <h2 class="fw-bold" style="color: var(--color-0e1b48);">Actualizar Datos del Cliente</h2>
-                        <p class="text-muted mb-0">Editando a: <strong><?php echo htmlspecialchars($cliente_a_editar['nomb_cli'] . ' ' . $cliente_a_editar['apelli_cli']); ?></strong></p>
-                    </div>
-                    <a href="editar_cliente.php" class="btn btn-custom px-4 py-2">← Volver al Listado</a>
-                </div>
-
-                <?php if ($error): ?><div class="alert alert-danger rounded-4"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
-                <?php if ($mensaje): ?><div class="alert alert-success rounded-4"><?php echo htmlspecialchars($mensaje); ?></div><?php endif; ?>
-
-                <div class="card card-custom p-4 bg-white">
+        <div class="row g-4">
+            <!-- COLUMNA 1: Formulario de Actualización de Datos Personales -->
+            <div class="col-md-6">
+                <div class="card card-custom p-4 bg-white h-100">
+                    <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">Datos Personales</h4>
                     <form method="POST">
+                        <input type="hidden" name="accion" value="actualizar_datos">
                         <div class="mb-3">
                             <label class="form-label fw-bold">Nombres</label>
-                            <input type="text" name="nomb_cli" class="form-control" value="<?php echo htmlspecialchars($cliente_a_editar['nomb_cli']); ?>" required>
+                            <input type="text" name="nomb_cli" class="form-control" value="<?php echo htmlspecialchars($cliente['nomb_cli']); ?>" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold">Apellidos</label>
-                            <input type="text" name="apelli_cli" class="form-control" value="<?php echo htmlspecialchars($cliente_a_editar['apelli_cli']); ?>" required>
+                            <input type="text" name="apelli_cli" class="form-control" value="<?php echo htmlspecialchars($cliente['apelli_cli']); ?>" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold">Teléfono</label>
-                            <input type="text" name="tel_cli" class="form-control" value="<?php echo htmlspecialchars($cliente_a_editar['tel_cli'] ?? ''); ?>">
+                            <input type="text" name="tel_cli" class="form-control" value="<?php echo htmlspecialchars($cliente['tel_cli'] ?? ''); ?>">
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold">Dirección</label>
-                            <input type="text" name="dir_cli" class="form-control" value="<?php echo htmlspecialchars($cliente_a_editar['dir_cli'] ?? ''); ?>">
+                            <input type="text" name="dir_cli" class="form-control" value="<?php echo htmlspecialchars($cliente['dir_cli'] ?? ''); ?>">
                         </div>
-                        <button type="submit" class="btn btn-custom w-100 py-2">Guardar Cambios</button>
+                        <button type="submit" class="btn btn-custom w-100 py-2">Guardar Cambios Personales</button>
                     </form>
                 </div>
+            </div>
 
-            <?php else: ?>
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div>
-                        <h2 class="fw-bold" style="color: var(--color-0e1b48);">Gestión y Actualización de Clientes</h2>
-                        <p class="text-muted mb-0">Busca un cliente por nombre y selecciona "Actualizar Datos".</p>
-                    </div>
-                    <a href="index.php" class="btn btn-custom px-4 py-2">← Volver al Panel</a>
-                </div>
-
-                <?php if ($error): ?><div class="alert alert-danger rounded-4"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
-
-                <div class="card card-custom p-3 bg-white mb-4">
-                    <form method="GET" class="input-group">
-                        <input type="text" name="q" class="form-control" placeholder="Buscar por nombre o apellido..." value="<?php echo htmlspecialchars($_GET['q'] ?? ''); ?>">
-                        <button class="btn btn-dark px-4" type="submit">Buscar</button>
-                        <?php if (!empty($_GET['q'])): ?>
-                            <a href="editar_cliente.php" class="btn btn-outline-secondary">Limpiar</a>
-                        <?php endif; ?>
-                    </form>
-                </div>
-
-                <div class="card card-custom p-4 bg-white">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Cliente</th>
-                                    <th>Teléfono</th>
-                                    <th>N° Cuenta Asociada</th>
-                                    <th>Tipo de Cuenta</th>
-                                    <th class="text-center">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (count($clientes ?? []) > 0): ?>
-                                    <?php foreach ($clientes as $cli): ?>
+            <!-- COLUMNA 2: Estado de Cuentas y Creación de Cuenta Nueva si no posee -->
+            <div class="col-md-6">
+                <div class="card card-custom p-4 bg-white h-100 d-flex flex-column">
+                    <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">Cuentas Bancarias Asociadas</h4>
+                    
+                    <?php if (count($cuentas_cliente) > 0): ?>
+                        <div class="table-responsive mb-4">
+                            <table class="table table-sm align-middle">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>N° Cuenta</th>
+                                        <th>Tipo</th>
+                                        <th>Saldo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($cuentas_cliente as $cta): ?>
                                         <tr>
-                                            <td>#<?php echo htmlspecialchars($cli['id_cliente']); ?></td>
-                                            <td class="fw-bold"><?php echo htmlspecialchars($cli['nomb_cli'] . ' ' . $cli['apelli_cli']); ?></td>
-                                            <td><?php echo htmlspecialchars($cli['tel_cli'] ?? 'N/A'); ?></td>
-                                            <td>
-                                                <?php if (!empty($cli['num_cuenta'])): ?>
-                                                    <span class="badge bg-secondary"><?php echo htmlspecialchars($cli['num_cuenta']); ?></span>
-                                                <?php else: ?>
-                                                    <span class="text-muted small">Sin cuenta</span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td><?php echo htmlspecialchars($cli['nomb_tipo_cuenta'] ?? 'N/A'); ?></td>
-                                            <td class="text-center">
-                                                <a href="editar_cliente.php?id=<?php echo $cli['id_cliente']; ?>" class="btn btn-sm btn-outline-dark px-3 rounded-pill">
-                                                    Actualizar Datos
-                                                </a>
-                                            </td>
+                                            <td><strong><?php echo htmlspecialchars($cta['num_cuenta']); ?></strong></td>
+                                            <td><?php echo htmlspecialchars($cta['nomb_tipo_cuenta']); ?></td>
+                                            <td class="text-success fw-bold">$<?php echo number_format($cta['saldo'], 2); ?></td>
                                         </tr>
                                     <?php endforeach; ?>
-                                <?php else: ?>
-                                    <tr><td colspan="6" class="text-center py-4 text-muted">No se encontraron clientes registrados o coincidentes con la búsqueda.</td></tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="text-muted small mt-auto">Este cliente ya cuenta con productos financieros activos en el sistema.</p>
+                    <?php else: ?>
+                        <div class="alert alert-warning rounded-4 mb-3">
+                            Este cliente <strong>no tiene ninguna cuenta bancaria</strong> asociada actualmente.
+                        </div>
+
+                        <!-- Formulario para crear una cuenta nueva -->
+                        <form method="POST" class="mt-auto">
+                            <input type="hidden" name="accion" value="crear_cuenta">
+                            <h5 class="fw-bold text-dark mb-3">Asignar Nueva Cuenta</h5>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Tipo de Cuenta</label>
+                                <select name="cod_tipo_cuenta" class="form-select" required>
+                                    <option value="">Seleccione el tipo...</option>
+                                    <?php foreach ($tipos_cuenta as $tc): ?>
+                                        <option value="<?php echo $tc['cod_tipo_cuenta']; ?>"><?php echo htmlspecialchars($tc['nomb_tipo_cuenta']); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Saldo Inicial ($)</label>
+                                <input type="number" step="0.01" name="saldo_inicial" class="form-control" value="0.00" min="0" required>
+                            </div>
+                            <button type="submit" class="btn btn-dark w-100 py-2">Crear Cuenta Bancaria</button>
+                        </form>
+                    <?php endif; ?>
                 </div>
-            <?php endif; ?>
+            </div>
+        </div>
 
-        <?php endif; ?>
-
-    </div>
-</body>
-</html>
     </div>
 </body>
 </html>
