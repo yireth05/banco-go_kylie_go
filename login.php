@@ -94,7 +94,7 @@ session_start();
     <!-- Menú de Navegación Superior -->
     <nav class="navbar navbar-expand-lg navbar-custom px-4 py-3">
         <div class="container-fluid">
-            <a class="navbar-brand fs-4" href="index.php">🏦 Banco GO KYLIE GO</a>
+            <a class="navbar-brand fs-4" href="index.php">Banco GO KYLIE GO</a>
             <button class="navbar-toggler bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
