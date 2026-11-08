@@ -125,10 +125,11 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
                 </div>
             </div>
 
-        <!-- PERFIL CLIENTE -->
-        <?php else: ?>
+       <?php else: ?>
             <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">Mi Portal Financiero</h4>
             <div class="row g-4">
+                
+                <!-- Tarjeta 1: Mis Datos Personales -->
                 <div class="col-md-4">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Mis Datos Personales</h5>
@@ -136,6 +137,8 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
                         <a href="editar_cliente.php" class="btn btn-sm btn-custom mt-auto w-100">Ver / Editar Mis Datos</a>
                     </div>
                 </div>
+
+                <!-- Tarjeta 2: Mis Cuentas y Saldos -->
                 <div class="col-md-4">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Mis Cuentas y Saldos</h5>
@@ -143,29 +146,35 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
                         <a href="estado_cuentas.php" class="btn btn-sm btn-custom mt-auto w-100">Consultar Saldos</a>
                     </div>
                 </div>
+
+                <!-- Tarjeta 3: Transferencias y Movimientos (Con el menú desplegable arreglado) -->
                 <div class="col-md-4">
-    <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
-        <h5 class="fw-bold text-dark">Transferencias y Movimientos</h5>
-        <p class="text-muted small">Realizar transferencias y revisar el historial de transacciones.</p>
-        
-       <div class="dropdown mt-auto w-100">
-    <button class="btn btn-sm btn-custom w-100 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-        Transferir / Ver Historial
-    </button>
-    <ul class="dropdown-menu shadow-sm border-0 mt-2 p-2 w-100" style="min-width: 220px;">
-        <li>
-            <a class="dropdown-item rounded py-2 fw-semibold text-dark text-wrap" href="Crear-RealizarTransacciones.php">
-                <i class="bi bi-arrow-left-right me-2"></i> Hacer transferencia
-            </a>
-        </li>
-        <li><hr class="dropdown-divider"></li>
-        <li>
-            <a class="dropdown-item rounded py-2 fw-semibold text-dark text-wrap" href="historial_transacciones.php">
-                <i class="bi bi-clock-history me-2"></i> Ver su historial
-            </a>
-        </li>
-    </ul>
-</div>
+                    <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
+                        <h5 class="fw-bold text-dark">Transferencias y Movimientos</h5>
+                        <p class="text-muted small">Realizar transferencias y revisar el historial de transacciones.</p>
+                        
+                        <div class="dropdown mt-auto w-100">
+                            <button class="btn btn-sm btn-custom w-100 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Transferir / Ver Historial
+                            </button>
+                            <ul class="dropdown-menu shadow-sm border-0 mt-2 p-2 w-100" style="min-width: 220px;">
+                                <li>
+                                    <a class="dropdown-item rounded py-2 fw-semibold text-dark text-wrap" href="Crear-RealizarTransacciones.php">
+                                        <i class="bi bi-arrow-left-right me-2"></i> Hacer transferencia
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item rounded py-2 fw-semibold text-dark text-wrap" href="historial_transacciones.php">
+                                        <i class="bi bi-clock-history me-2"></i> Ver su historial
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tarjeta 4: Servicios Bancarios -->
                 <div class="col-md-4">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Servicios Bancarios</h5>
@@ -173,9 +182,9 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
                         <a href="admin_configuraciones.php" class="btn btn-sm btn-custom mt-auto w-100">Ver Productos</a>
                     </div>
                 </div>
+
             </div>
         <?php endif; ?>
-
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
