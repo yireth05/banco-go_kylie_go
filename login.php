@@ -9,40 +9,39 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $password    = trim($_POST['password']);
     $cedula      = trim($_POST['cedula'] ?? '');
 
-    // Definir credenciales y mapeo con los usuarios de PostgreSQL que creaste en tu BD
-    $db_user = "";
-    $rol_sistema = "";
+    // Configuración de conexión única a PostgreSQL (ajusta la contraseña de tu postgres de Docker si es diferente)
+    $host = "localhost";
+    $port = "5432";
+    $dbname = "banco_db"; 
+    $db_user = "postgres";     
+    $db_pass = "tu_contraseña"; // <-- CAMBIA ESTO por tu contraseña real de PostgreSQL en Docker si no es 'tu_contraseña'
 
-    if ($usuario_rol === 'administrador') {
-        $db_user = 'administrador';
-        $rol_sistema = 'administrador';
-    } elseif ($usuario_rol === 'cajero') {
-        $db_user = 'cajero';
-        $rol_sistema = 'cajero';
-    } elseif ($usuario_rol === 'cliente') {
-        $db_user = 'cliente';
-        $rol_sistema = 'cliente';
-    }
+    try {
+        $pdo = new PDO("pgsql:host=$host;port=$port;dbname=$dbname", $db_user, $db_pass);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    if (!empty($db_user)) {
-        // Intentamos conectar a PostgreSQL usando el usuario del rol seleccionado
-        $host = "localhost";
-        $port = "5432";
-        $dbname = "banco_db"; // Asegúrate de que este sea el nombre de tu base de datos
-        
-        // Contraseñas correspondientes a los usuarios creados en tu script SQL
-        $db_pass = ($db_user === 'administrador') ? 'admin123' : (($db_user === 'cajero') ? 'cajero123' : 'cliente123');
-
-        try {
-            // Probar conexión con las credenciales del rol
-            $pdo = new PDO("pgsql:host=$host;port=$port;dbname=$dbname", $db_user, $db_pass);
-            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-            // Si es cliente, validamos adicionalmente que su cédula exista en la tabla clientes
-            if ($rol_sistema === 'cliente') {
-                if (empty($cedula)) {
-                    $error = "Por favor ingresa tu número de cédula.";
-                } else {
+        if ($usuario_rol === 'administrador') {
+            if ($password === 'admin123') {
+                $_SESSION['usuario'] = 'Administrador';
+                $_SESSION['rol'] = 'administrador';
+                header("Location: index.php");
+                exit;
+            } else {
+                $error = "Contraseña de administrador incorrecta.";
+            }
+        } elseif ($usuario_rol === 'cajero') {
+            if ($password === 'cajero123') {
+                $_SESSION['usuario'] = 'Cajero';
+                $_SESSION['rol'] = 'cajero';
+                header("Location: index.php");
+                exit;
+            } else {
+                $error = "Contraseña de cajero incorrecta.";
+            }
+        } elseif ($usuario_rol === 'cliente') {
+            if (!empty($cedula) && !empty($password)) {
+                if ($password === 'cliente123') {
+                    // Consultar si la cédula existe en la tabla clientes
                     $stmt = $pdo->prepare("SELECT * FROM clientes WHERE id_cliente = :cedula");
                     $stmt->execute(['cedula' => $cedula]);
                     $cliente_data = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -56,24 +55,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     } else {
                         $error = "La cédula ingresada no se encuentra registrada en el banco.";
                     }
+                } else {
+                    $error = "Contraseña general de cliente incorrecta.";
                 }
             } else {
-                // Si es Administrador o Cajero
-                if ($password === $db_pass) {
-                    $_SESSION['usuario'] = ucfirst($rol_sistema);
-                    $_SESSION['rol'] = $rol_sistema;
-                    header("Location: index.php");
-                    exit;
-                } else {
-                    $error = "Contraseña incorrecta para el rol seleccionado.";
-                }
+                $error = "Por favor ingresa tu cédula y contraseña.";
             }
-
-        } catch (PDOException $e) {
-            $error = "Error de autenticación o credenciales inválidas.";
+        } else {
+            $error = "Por favor selecciona un rol válido.";
         }
-    } else {
-        $error = "Por favor selecciona un rol válido.";
+
+    } catch (PDOException $e) {
+        $error = "Error de conexión a la base de datos: " . $e->getMessage();
     }
 }
 ?>
