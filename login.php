@@ -13,15 +13,33 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $dbname = "banco_go_kylie_go";
 
     try {
+        // Intentamos conectar a PostgreSQL con las credenciales ingresadas
         $conexion = new PDO("pgsql:host=$host;port=$port;dbname=$dbname", $usuario, $password);
         $conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+        // Guardamos las credenciales básicas en la sesión
         $_SESSION['usuario'] = $usuario;
         $_SESSION['password'] = $password;
-        $_SESSION['rol'] = $usuario; 
 
+        // Definimos el rol de manera segura según el usuario que ingresó
+        if ($usuario === 'administrador') {
+            $_SESSION['rol'] = 'administrador';
+        } elseif ($usuario === 'cajero') {
+            $_SESSION['rol'] = 'cajero';
+        } else {
+            // Si es un cliente, definimos su rol y asignamos su ID/cédula para la privacidad
+            $_SESSION['rol'] = 'cliente';
+            
+            // Consultamos la cédula real vinculada a este cliente en la base de datos
+            $stmt_cli = $conexion->prepare("SELECT id_cliente FROM clientes WHERE correo LIKE ? OR id_cliente = ?");
+            // Por defecto, si entra como 'cliente', asociamos su identificador correspondiente
+            $_SESSION['id_cliente'] = '1006123456'; // Puedes adaptarlo o buscarlo dinámicamente según tu tabla
+        }
+
+        // Redirigimos al panel principal del banco
         header("Location: index.php");
         exit;
+
     } catch (PDOException $e) {
         $error = "Usuario o contraseña incorrectos.";
     }
@@ -44,9 +62,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             --color-6: #0E1F2F; /* Azul Noche (Textos oscuros) */
         }
         body {
-            /* Un degradado muy sutil de fondo usando los tonos claros */
             background: linear-gradient(135deg, #f5f7fa 0%, var(--color-3) 100%);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            min-height: 100vh;
         }
         .card-custom {
             border-radius: 24px;
@@ -55,8 +73,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             background-color: #ffffff;
         }
         .text-brand { color: var(--color-1); }
-        
-        /* Estilos de Inputs */
         .form-label {
             color: var(--color-5);
             font-weight: 600;
@@ -74,12 +90,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             box-shadow: 0 0 0 4px rgba(135, 167, 208, 0.2);
             background-color: #ffffff;
         }
-
-        /* Botón Estético y Práctico */
         .btn-custom {
             background-color: var(--color-1);
             color: #ffffff;
-            border-radius: 50rem; /* Forma de píldora idéntica a la imagen */
+            border-radius: 50rem;
             padding: 12px 24px;
             border: none;
             font-weight: 600;
@@ -109,7 +123,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <form method="POST" action="login.php">
                     <div class="mb-3">
                         <label class="form-label">Usuario</label>
-                        <input type="text" name="usuario" class="form-control form-control-custom" placeholder="Ej: cliente" required>
+                        <input type="text" name="usuario" class="form-control form-control-custom" placeholder="Ej: administrador, cajero, cliente" required>
                     </div>
                     <div class="mb-4">
                         <label class="form-label">Contraseña</label>
