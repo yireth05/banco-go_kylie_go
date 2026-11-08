@@ -89,7 +89,7 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
             </div>
 
         <!-- PERFIL CAJERO -->
-        <?php elseif ($rol === 'cajero'): ?>
+       <?php elseif ($rol === 'cajero'): ?>
             <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">Ventanilla y Operaciones de Caja</h4>
             <div class="row g-4">
                 <div class="col-md-4">
@@ -97,7 +97,11 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
                         <h5 class="fw-bold text-dark">Gestión de Clientes</h5>
                         <p class="text-muted small">Registrar nuevos clientes, actualizar datos y realizar búsquedas.</p>
                         <a href="Crearcliente.php" class="btn btn-sm btn-custom mt-auto w-100 mb-2">Nuevo Cliente</a>
-                        <a href="editar_cliente.php" class="btn btn-sm btn-outline-secondary w-100" style="position: relative; z-index: 10;">Actualizar Datos</a>
+                        
+                        <!-- Formulario directo para forzar la acción del botón -->
+                        <form action="editar_cliente.php" method="GET" class="w-100 mt-1">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary w-100" style="position: relative; z-index: 10;">Actualizar Datos</button>
+                        </form>
                     </div>
                 </div>
                 <div class="col-md-4">
