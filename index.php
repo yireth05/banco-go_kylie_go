@@ -6,7 +6,7 @@ if (!isset($_SESSION['rol'])) {
     exit;
 }
 
-$rol = $_SESSION['rol'];
+$rol     = $_SESSION['rol'];
 $usuario = $_SESSION['usuario'] ?? 'Usuario';
 ?>
 <!DOCTYPE html>
@@ -14,7 +14,7 @@ $usuario = $_SESSION['usuario'] ?? 'Usuario';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Principal - Banco GO KYLIE GO</title>
+    <title>Panel Principal - Banco Villavicencio</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
@@ -45,7 +45,7 @@ $usuario = $_SESSION['usuario'] ?? 'Usuario';
 
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom px-4 py-3">
         <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="index.php">Banco GO KYLIE GO</a>
+            <a class="navbar-brand fw-bold" href="index.php">Banco Villavicencio</a>
             <div class="ms-auto d-flex align-items-center gap-3">
                 <span class="text-light small">Hola, <strong><?php echo htmlspecialchars($usuario); ?></strong> (Rol: <span class="badge bg-light text-dark"><?php echo ucfirst($rol); ?></span>)</span>
                 <a href="logout.php" class="btn btn-outline-light btn-sm rounded-pill px-3">Cerrar Sesión</a>
@@ -63,21 +63,20 @@ $usuario = $_SESSION['usuario'] ?? 'Usuario';
             </div>
         </div>
 
-        <!-- VISTA ADMINISTRADOR -->
         <?php if ($rol === 'administrador'): ?>
             <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">Gestión Administrativa y Auditoría</h4>
             <div class="row g-4">
                 <div class="col-md-4">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
-                        <h5 class="fw-bold text-dark">Gestión de Usuarios</h5>
-                        <p class="text-muted small">Control de roles y accesos del sistema definidos en PostgreSQL.</p>
-                        <a href="estado_cuentas.php" class="btn btn-sm btn-dark mt-auto rounded-pill">Administrar Usuarios</a>
+                        <h5 class="fw-bold text-dark">Estado de Cuentas</h5>
+                        <p class="text-muted small">Supervisión general de cuentas, saldos y titulares.</p>
+                        <a href="estado_cuentas.php" class="btn btn-sm btn-dark mt-auto rounded-pill">Administrar Cuentas</a>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Configuraciones del Banco</h5>
-                        <p class="text-muted small">Gestión de sucursales, ciudades, cajeros y tipos de cuenta.</p>
+                        <p class="text-muted small">Gestión de sucursales, ciudades, cajeros automáticos y tipos de cuenta.</p>
                         <a href="admin_configuraciones.php" class="btn btn-sm btn-dark mt-auto rounded-pill">Ver Configuraciones</a>
                     </div>
                 </div>
@@ -90,7 +89,6 @@ $usuario = $_SESSION['usuario'] ?? 'Usuario';
                 </div>
             </div>
 
-        <!-- VISTA CAJERO -->
         <?php elseif ($rol === 'cajero'): ?>
             <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">Ventanilla y Operaciones de Caja</h4>
             <div class="row g-4">
@@ -103,16 +101,16 @@ $usuario = $_SESSION['usuario'] ?? 'Usuario';
                 </div>
                 <div class="col-md-3">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
-                        <h5 class="fw-bold text-dark">Actualizacion de Datos</h5>
-                        <p class="text-muted small">Modificar la información de contacto de los clientes.</p>
-                        <a href="editar_cliente.php" class="btn btn-sm btn-primary mt-auto rounded-pill" style="background-color: var(--color-0e1b48);">Actualizar Datos</a>
+                        <h5 class="fw-bold text-dark">Listado de Clientes</h5>
+                        <p class="text-muted small">Modificar o administrar información de contacto de clientes.</p>
+                        <a href="listadeClientesRead.php" class="btn btn-sm btn-primary mt-auto rounded-pill" style="background-color: var(--color-0e1b48);">Ver Clientes</a>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
-                        <h5 class="fw-bold text-dark">Cuentas y Préstamos</h5>
-                        <p class="text-muted small">Abrir nueva cuenta, modificar cuentas y registrar préstamos.</p>
-                        <a href="crear_cuenta.php" class="btn btn-sm btn-primary mt-auto rounded-pill" style="background-color: var(--color-0e1b48);">Gestionar Cuentas</a>
+                        <h5 class="fw-bold text-dark">Cuentas Bancarias</h5>
+                        <p class="text-muted small">Aperturar nuevas cuentas para clientes existentes.</p>
+                        <a href="crear_cuenta.php" class="btn btn-sm btn-primary mt-auto rounded-pill" style="background-color: var(--color-0e1b48);">Aperturar Cuenta</a>
                     </div>
                 </div>
                 <div class="col-md-3">
@@ -124,29 +122,21 @@ $usuario = $_SESSION['usuario'] ?? 'Usuario';
                 </div>
             </div>
 
-        <!-- VISTA CLIENTE -->
         <?php elseif ($rol === 'cliente'): ?>
             <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">Mi Portal Bancario</h4>
             <div class="row g-4">
-                <div class="col-md-4">
-                    <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
-                        <h5 class="fw-bold text-dark">Mis Datos Personales</h5>
-                        <p class="text-muted small">Ver tu información personal registrada en el banco.</p>
-                        <a href="cliente_datos.php" class="btn btn-sm btn-outline-dark mt-auto rounded-pill">Ver mis datos</a>
-                    </div>
-                </div>
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Mis Cuentas y Saldos</h5>
                         <p class="text-muted small">Consulta el saldo actual de tus cuentas y estado de productos.</p>
                         <a href="estado_cuentas.php" class="btn btn-sm btn-outline-dark mt-auto rounded-pill">Ver mis cuentas</a>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
-                        <h5 class="fw-bold text-dark">Transferencias</h5>
-                        <p class="text-muted small">Realiza transferencias y revisa tu historial personal de movimientos.</p>
-                        <a href="Crear-RealizarTransacciones.php" class="btn btn-sm btn-outline-dark mt-auto rounded-pill">Transferir Fondos</a>
+                        <h5 class="fw-bold text-dark">Transacciones</h5>
+                        <p class="text-muted small">Realiza operativas y revisa tu historial personal de movimientos.</p>
+                        <a href="Crear-RealizarTransacciones.php" class="btn btn-sm btn-outline-dark mt-auto rounded-pill">Transferir / Operar</a>
                     </div>
                 </div>
             </div>
