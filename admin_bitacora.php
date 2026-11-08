@@ -3,8 +3,8 @@
 session_start();
 require_once 'conexionDB.php';
 
-// Validar que el usuario tenga rol de administrador
-if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'administrador') {
+// Validar que solo administradores y cajeros puedan acceder a la bitácora
+if (!isset($_SESSION['rol']) || (!in_array($_SESSION['rol'], ['administrador', 'cajero']))) {
     header("Location: login.php");
     exit;
 }
@@ -88,8 +88,8 @@ try {
     <div class="container py-5 mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h2 class="fw-bold text-brand">Bitácora de Transacciones y Auditoría</h2>
-                <p class="text-muted mb-0">Registro y monitoreo de operaciones de la base de datos en tiempo real.</p>
+                <h2 class="fw-bold text-brand">Bitácora de Transacciones</h2>
+                <p class="text-muted mb-0">Registro y monitoreo de operaciones de transacciones en tiempo real.</p>
             </div>
             <a href="index.php" class="btn btn-custom px-4 py-2">← Volver al Panel</a>
         </div>
@@ -122,7 +122,7 @@ try {
                                     <td><?php echo date('d/m/Y H:i:s', strtotime($row['fecha_operacion'])); ?></td>
                                     <td>
                                         <span class="badge bg-<?php echo ($row['operacion'] === 'INSERT') ? 'success' : (($row['operacion'] === 'UPDATE') ? 'warning text-dark' : 'danger'); ?>">
-                                            <?php echo $row['operacion']; ?>
+                                            <?php echo htmlspecialchars($row['operacion']); ?>
                                         </span>
                                     </td>
                                     <td><strong><?php echo htmlspecialchars($row['num_cuenta_origen'] ?? 'N/A'); ?></strong></td>
