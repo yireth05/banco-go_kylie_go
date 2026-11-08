@@ -1,12 +1,5 @@
---
--- PostgreSQL database dump
---
 
 \restrict ZZBxj25gIK00ZsjVLfHgFcdRqetBUS6xwYE82ZBV8ERruelWBNI3CkU5hZRLoKW
-
--- Dumped from database version 15.19
--- Dumped by pg_dump version 15.19
-
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
@@ -73,9 +66,8 @@ DROP TABLE IF EXISTS public.banca_virtual;
 DROP FUNCTION IF EXISTS public.realizar_transaccion(p_id_cliente character varying, p_num_cuenta character varying, p_cod_tipo integer, p_cod_forma integer, p_monto numeric, p_id_cajero integer, p_id_banca_virtual integer);
 DROP FUNCTION IF EXISTS public.fn_validar_transaccion();
 DROP FUNCTION IF EXISTS public.fn_auditar_transaccion();
---
--- Name: fn_auditar_transaccion(); Type: FUNCTION; Schema: public; Owner: postgres
---
+
+--FUNCION AUDITAR TRASCCION
 
 CREATE FUNCTION public.fn_auditar_transaccion() RETURNS trigger
     LANGUAGE plpgsql
@@ -88,20 +80,16 @@ BEGIN
         INSERT INTO bitacora_transacciones (operacion, id_transaccion, detalle)
         VALUES (TG_OP, NEW.id_transaccion,
                 'antes=' || to_jsonb(OLD)::text || ' | despues=' || to_jsonb(NEW)::text);
-    ELSE  -- DELETE
+    ELSE 
         INSERT INTO bitacora_transacciones (operacion, id_transaccion, detalle)
         VALUES (TG_OP, OLD.id_transaccion, 'borrado=' || to_jsonb(OLD)::text);
     END IF;
-    RETURN NULL;  -- en AFTER el valor de retorno se ignora
-END;
+    RETURN NULL;  
 $$;
 
-
 ALTER FUNCTION public.fn_auditar_transaccion() OWNER TO postgres;
+--FUNCION VALIDAR TRANSACCION
 
---
--- Name: fn_validar_transaccion(); Type: FUNCTION; Schema: public; Owner: postgres
---
 
 CREATE FUNCTION public.fn_validar_transaccion() RETURNS trigger
     LANGUAGE plpgsql
@@ -121,16 +109,14 @@ BEGIN
               NEW.fecha_transaccion::date USING ERRCODE = 'BK011';
     END IF;
 
-    RETURN NEW;   -- BEFORE row-level: debe devolver NEW
+    RETURN NEW;  
 END;
 $$;
 
 
 ALTER FUNCTION public.fn_validar_transaccion() OWNER TO postgres;
 
---
--- Name: realizar_transaccion(character varying, character varying, integer, integer, numeric, integer, integer); Type: FUNCTION; Schema: public; Owner: postgres
---
+--FUNCION REALIZAR TRANSACCION
 
 CREATE FUNCTION public.realizar_transaccion(p_id_cliente character varying, p_num_cuenta character varying, p_cod_tipo integer, p_cod_forma integer, p_monto numeric, p_id_cajero integer DEFAULT NULL::integer, p_id_banca_virtual integer DEFAULT NULL::integer) RETURNS integer
     LANGUAGE plpgsql
@@ -201,17 +187,12 @@ BEGIN
 END;
 $$;
 
-
 ALTER FUNCTION public.realizar_transaccion(p_id_cliente character varying, p_num_cuenta character varying, p_cod_tipo integer, p_cod_forma integer, p_monto numeric, p_id_cajero integer, p_id_banca_virtual integer) OWNER TO postgres;
 
 SET default_tablespace = '';
-
 SET default_table_access_method = heap;
 
---
--- Name: banca_virtual; Type: TABLE; Schema: public; Owner: postgres
---
-
+--CREACION TABLAS
 CREATE TABLE public.banca_virtual (
     id_banca_virtual integer NOT NULL,
     plataforma character varying(50) NOT NULL,
@@ -222,9 +203,7 @@ CREATE TABLE public.banca_virtual (
 
 ALTER TABLE public.banca_virtual OWNER TO postgres;
 
---
--- Name: banca_virtual_id_banca_virtual_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
+
 
 CREATE SEQUENCE public.banca_virtual_id_banca_virtual_seq
     AS integer
@@ -237,17 +216,7 @@ CREATE SEQUENCE public.banca_virtual_id_banca_virtual_seq
 
 ALTER TABLE public.banca_virtual_id_banca_virtual_seq OWNER TO postgres;
 
---
--- Name: banca_virtual_id_banca_virtual_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
 ALTER SEQUENCE public.banca_virtual_id_banca_virtual_seq OWNED BY public.banca_virtual.id_banca_virtual;
-
-
---
--- Name: bitacora_transacciones; Type: TABLE; Schema: public; Owner: postgres
---
-
 CREATE TABLE public.bitacora_transacciones (
     id_bitacora integer NOT NULL,
     usuario_bd character varying(100) DEFAULT CURRENT_USER NOT NULL,
@@ -261,10 +230,6 @@ CREATE TABLE public.bitacora_transacciones (
 
 ALTER TABLE public.bitacora_transacciones OWNER TO postgres;
 
---
--- Name: bitacora_transacciones_id_bitacora_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
 CREATE SEQUENCE public.bitacora_transacciones_id_bitacora_seq
     AS integer
     START WITH 1
@@ -276,16 +241,9 @@ CREATE SEQUENCE public.bitacora_transacciones_id_bitacora_seq
 
 ALTER TABLE public.bitacora_transacciones_id_bitacora_seq OWNER TO postgres;
 
---
--- Name: bitacora_transacciones_id_bitacora_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
 
 ALTER SEQUENCE public.bitacora_transacciones_id_bitacora_seq OWNED BY public.bitacora_transacciones.id_bitacora;
 
-
---
--- Name: cajeros_automaticos; Type: TABLE; Schema: public; Owner: postgres
---
 
 CREATE TABLE public.cajeros_automaticos (
     id_cajero integer NOT NULL,
@@ -298,10 +256,6 @@ CREATE TABLE public.cajeros_automaticos (
 
 ALTER TABLE public.cajeros_automaticos OWNER TO postgres;
 
---
--- Name: ciudades; Type: TABLE; Schema: public; Owner: postgres
---
-
 CREATE TABLE public.ciudades (
     id_ciudad integer NOT NULL,
     nomb_ciudad character varying(100) NOT NULL
@@ -310,9 +264,6 @@ CREATE TABLE public.ciudades (
 
 ALTER TABLE public.ciudades OWNER TO postgres;
 
---
--- Name: clientes; Type: TABLE; Schema: public; Owner: postgres
---
 
 CREATE TABLE public.clientes (
     id_cliente character varying(20) NOT NULL,
@@ -328,10 +279,6 @@ CREATE TABLE public.clientes (
 
 ALTER TABLE public.clientes OWNER TO postgres;
 
---
--- Name: cuentas; Type: TABLE; Schema: public; Owner: postgres
---
-
 CREATE TABLE public.cuentas (
     num_cuenta character varying(20) NOT NULL,
     saldo numeric(15,2) DEFAULT 0.00 NOT NULL,
@@ -345,10 +292,6 @@ CREATE TABLE public.cuentas (
 
 ALTER TABLE public.cuentas OWNER TO postgres;
 
---
--- Name: empleados; Type: TABLE; Schema: public; Owner: postgres
---
-
 CREATE TABLE public.empleados (
     id_empleado character varying(20) NOT NULL,
     nombres character varying(100) NOT NULL,
@@ -360,10 +303,6 @@ CREATE TABLE public.empleados (
 
 ALTER TABLE public.empleados OWNER TO postgres;
 
---
--- Name: formas_transacciones; Type: TABLE; Schema: public; Owner: postgres
---
-
 CREATE TABLE public.formas_transacciones (
     cod_forma_transaccion integer NOT NULL,
     nomb_forma_transaccion character varying(50) NOT NULL
@@ -371,10 +310,6 @@ CREATE TABLE public.formas_transacciones (
 
 
 ALTER TABLE public.formas_transacciones OWNER TO postgres;
-
---
--- Name: prestamos; Type: TABLE; Schema: public; Owner: postgres
---
 
 CREATE TABLE public.prestamos (
     id_prestamo character varying(20) NOT NULL,
@@ -394,10 +329,6 @@ CREATE TABLE public.prestamos (
 
 ALTER TABLE public.prestamos OWNER TO postgres;
 
---
--- Name: sucursales; Type: TABLE; Schema: public; Owner: postgres
---
-
 CREATE TABLE public.sucursales (
     id_sucursal integer NOT NULL,
     nomb_sucursal character varying(100) NOT NULL,
@@ -408,9 +339,6 @@ CREATE TABLE public.sucursales (
 
 ALTER TABLE public.sucursales OWNER TO postgres;
 
---
--- Name: tipo_cuentas; Type: TABLE; Schema: public; Owner: postgres
---
 
 CREATE TABLE public.tipo_cuentas (
     cod_tipo_cuenta integer NOT NULL,
@@ -420,9 +348,6 @@ CREATE TABLE public.tipo_cuentas (
 
 ALTER TABLE public.tipo_cuentas OWNER TO postgres;
 
---
--- Name: tipo_transacciones; Type: TABLE; Schema: public; Owner: postgres
---
 
 CREATE TABLE public.tipo_transacciones (
     cod_tipo_transaccion integer NOT NULL,
@@ -433,9 +358,6 @@ CREATE TABLE public.tipo_transacciones (
 
 ALTER TABLE public.tipo_transacciones OWNER TO postgres;
 
---
--- Name: transacciones; Type: TABLE; Schema: public; Owner: postgres
---
 
 CREATE TABLE public.transacciones (
     id_transaccion integer NOT NULL,
@@ -454,9 +376,6 @@ CREATE TABLE public.transacciones (
 
 ALTER TABLE public.transacciones OWNER TO postgres;
 
---
--- Name: transacciones_id_transaccion_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
 
 CREATE SEQUENCE public.transacciones_id_transaccion_seq
     AS integer
@@ -469,16 +388,7 @@ CREATE SEQUENCE public.transacciones_id_transaccion_seq
 
 ALTER TABLE public.transacciones_id_transaccion_seq OWNER TO postgres;
 
---
--- Name: transacciones_id_transaccion_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
 ALTER SEQUENCE public.transacciones_id_transaccion_seq OWNED BY public.transacciones.id_transaccion;
-
-
---
--- Name: vista_movimientos_clientes; Type: VIEW; Schema: public; Owner: postgres
---
 
 CREATE VIEW public.vista_movimientos_clientes AS
  SELECT (((c.nomb_cli)::text || ' '::text) || (c.apelli_cli)::text) AS cliente,
@@ -493,30 +403,13 @@ CREATE VIEW public.vista_movimientos_clientes AS
 
 ALTER TABLE public.vista_movimientos_clientes OWNER TO postgres;
 
---
--- Name: banca_virtual id_banca_virtual; Type: DEFAULT; Schema: public; Owner: postgres
---
-
 ALTER TABLE ONLY public.banca_virtual ALTER COLUMN id_banca_virtual SET DEFAULT nextval('public.banca_virtual_id_banca_virtual_seq'::regclass);
 
-
---
--- Name: bitacora_transacciones id_bitacora; Type: DEFAULT; Schema: public; Owner: postgres
---
 
 ALTER TABLE ONLY public.bitacora_transacciones ALTER COLUMN id_bitacora SET DEFAULT nextval('public.bitacora_transacciones_id_bitacora_seq'::regclass);
 
 
---
--- Name: transacciones id_transaccion; Type: DEFAULT; Schema: public; Owner: postgres
---
-
 ALTER TABLE ONLY public.transacciones ALTER COLUMN id_transaccion SET DEFAULT nextval('public.transacciones_id_transaccion_seq'::regclass);
-
-
---
--- Data for Name: banca_virtual; Type: TABLE DATA; Schema: public; Owner: postgres
---
 
 COPY public.banca_virtual (id_banca_virtual, plataforma, ip_origen) FROM stdin;
 1	App Móvil	190.25.10.15
@@ -524,10 +417,6 @@ COPY public.banca_virtual (id_banca_virtual, plataforma, ip_origen) FROM stdin;
 3	App Móvil	186.80.7.33
 \.
 
-
---
--- Data for Name: bitacora_transacciones; Type: TABLE DATA; Schema: public; Owner: postgres
---
 
 COPY public.bitacora_transacciones (id_bitacora, usuario_bd, fecha_operacion, operacion, id_transaccion, detalle) FROM stdin;
 1	postgres	2026-11-02 08:22:28.879086	INSERT	1	nuevo={"id_cajero": 1, "id_transaccion": 1, "id_banca_virtual": null, "fecha_transaccion": "2026-11-02T08:22:28.879086", "monto_transaccion": 1500000.00, "num_cuenta_origen": "AH-0001", "cod_tipo_transaccion": 1, "cod_forma_transaccion": 1}
@@ -541,10 +430,6 @@ COPY public.bitacora_transacciones (id_bitacora, usuario_bd, fecha_operacion, op
 \.
 
 
---
--- Data for Name: cajeros_automaticos; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
 COPY public.cajeros_automaticos (id_cajero, ubicacion, estado, id_sucursal) FROM stdin;
 1	Centro Comercial Primavera	Activo	1
 2	Parque Los Libertadores	Activo	1
@@ -553,11 +438,6 @@ COPY public.cajeros_automaticos (id_cajero, ubicacion, estado, id_sucursal) FROM
 5	Terminal Granada	Activo	4
 \.
 
-
---
--- Data for Name: ciudades; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
 COPY public.ciudades (id_ciudad, nomb_ciudad) FROM stdin;
 1	Villavicencio
 2	Acacías
@@ -565,10 +445,6 @@ COPY public.ciudades (id_ciudad, nomb_ciudad) FROM stdin;
 4	Bogotá
 \.
 
-
---
--- Data for Name: clientes; Type: TABLE DATA; Schema: public; Owner: postgres
---
 
 COPY public.clientes (id_cliente, nomb_cli, apelli_cli, direccion, telefono, correo, fecha_registro) FROM stdin;
 1006123456	Laura	Gómez Rojas	Cra 33 # 20-15	3101234567	laura.gomez@mail.com	2023-03-10
@@ -594,10 +470,6 @@ COPY public.clientes (id_cliente, nomb_cli, apelli_cli, direccion, telefono, cor
 \.
 
 
---
--- Data for Name: cuentas; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
 COPY public.cuentas (num_cuenta, saldo, fecha_apertura, id_cliente, cod_tipo_cuenta) FROM stdin;
 CO-0002	800000.00	2023-04-02	1006123456	2
 AH-0003	600000.00	2022-11-05	1006987654	1
@@ -608,9 +480,6 @@ NO-0004	1750000.00	2021-07-19	40345678	3
 \.
 
 
---
--- Data for Name: empleados; Type: TABLE DATA; Schema: public; Owner: postgres
---
 
 COPY public.empleados (id_empleado, nombres, apellidos, rol, correo) FROM stdin;
 2001001001	Julian	Castillo	cajero	julian.c@bancovillavicencio.com
@@ -636,10 +505,6 @@ COPY public.empleados (id_empleado, nombres, apellidos, rol, correo) FROM stdin;
 \.
 
 
---
--- Data for Name: formas_transacciones; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
 COPY public.formas_transacciones (cod_forma_transaccion, nomb_forma_transaccion) FROM stdin;
 1	Efectivo
 2	Cheque
@@ -648,20 +513,12 @@ COPY public.formas_transacciones (cod_forma_transaccion, nomb_forma_transaccion)
 \.
 
 
---
--- Data for Name: prestamos; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
 COPY public.prestamos (id_prestamo, monto_aprobado, saldo_pendiente, tasa_interes, cuotas_aprobadas, fecha_aprobacion, id_cliente) FROM stdin;
 PR-001	10000000.00	7500000.00	1.80	24	2024-02-15	1006123456
 PR-002	5000000.00	5000000.00	2.10	12	2025-03-01	1006987654
 PR-003	25000000.00	18200000.00	1.50	60	2023-09-12	40345678
 \.
 
-
---
--- Data for Name: sucursales; Type: TABLE DATA; Schema: public; Owner: postgres
---
 
 COPY public.sucursales (id_sucursal, nomb_sucursal, direccion_sucursal, id_ciudad) FROM stdin;
 1	Sucursal Centro	Cra 31 # 38-20	1
@@ -671,10 +528,6 @@ COPY public.sucursales (id_sucursal, nomb_sucursal, direccion_sucursal, id_ciuda
 \.
 
 
---
--- Data for Name: tipo_cuentas; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
 COPY public.tipo_cuentas (cod_tipo_cuenta, nomb_tipo_cuenta) FROM stdin;
 1	Ahorros
 2	Corriente
@@ -682,9 +535,6 @@ COPY public.tipo_cuentas (cod_tipo_cuenta, nomb_tipo_cuenta) FROM stdin;
 \.
 
 
---
--- Data for Name: tipo_transacciones; Type: TABLE DATA; Schema: public; Owner: postgres
---
 
 COPY public.tipo_transacciones (cod_tipo_transaccion, nomb_tipo_transaccion) FROM stdin;
 1	Depósito
@@ -692,9 +542,6 @@ COPY public.tipo_transacciones (cod_tipo_transaccion, nomb_tipo_transaccion) FRO
 \.
 
 
---
--- Data for Name: transacciones; Type: TABLE DATA; Schema: public; Owner: postgres
---
 
 COPY public.transacciones (id_transaccion, fecha_transaccion, monto_transaccion, num_cuenta_origen, cod_tipo_transaccion, cod_forma_transaccion, id_cajero, id_banca_virtual) FROM stdin;
 1	2026-11-02 08:22:28.879086	1500000.00	AH-0001	1	1	1	\N
@@ -707,446 +554,214 @@ COPY public.transacciones (id_transaccion, fecha_transaccion, monto_transaccion,
 8	2026-11-02 08:22:28.932761	450000.00	NO-0004	2	3	\N	3
 \.
 
-
---
--- Name: banca_virtual_id_banca_virtual_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
-
 SELECT pg_catalog.setval('public.banca_virtual_id_banca_virtual_seq', 3, true);
 
-
---
--- Name: bitacora_transacciones_id_bitacora_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
 
 SELECT pg_catalog.setval('public.bitacora_transacciones_id_bitacora_seq', 8, true);
 
 
---
--- Name: transacciones_id_transaccion_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
-
 SELECT pg_catalog.setval('public.transacciones_id_transaccion_seq', 8, true);
 
-
---
--- Name: empleados empleados_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
 
 ALTER TABLE ONLY public.empleados
     ADD CONSTRAINT empleados_pkey PRIMARY KEY (id_empleado);
 
 
---
--- Name: banca_virtual pk_banca_virtual; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
 ALTER TABLE ONLY public.banca_virtual
     ADD CONSTRAINT pk_banca_virtual PRIMARY KEY (id_banca_virtual);
 
 
---
--- Name: bitacora_transacciones pk_bitacora; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
 ALTER TABLE ONLY public.bitacora_transacciones
     ADD CONSTRAINT pk_bitacora PRIMARY KEY (id_bitacora);
-
-
---
--- Name: cajeros_automaticos pk_cajeros; Type: CONSTRAINT; Schema: public; Owner: postgres
---
 
 ALTER TABLE ONLY public.cajeros_automaticos
     ADD CONSTRAINT pk_cajeros PRIMARY KEY (id_cajero);
 
 
---
--- Name: ciudades pk_ciudades; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
 ALTER TABLE ONLY public.ciudades
     ADD CONSTRAINT pk_ciudades PRIMARY KEY (id_ciudad);
 
-
---
--- Name: clientes pk_clientes; Type: CONSTRAINT; Schema: public; Owner: postgres
---
 
 ALTER TABLE ONLY public.clientes
     ADD CONSTRAINT pk_clientes PRIMARY KEY (id_cliente);
 
 
---
--- Name: cuentas pk_cuentas; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
 ALTER TABLE ONLY public.cuentas
     ADD CONSTRAINT pk_cuentas PRIMARY KEY (num_cuenta);
 
-
---
--- Name: formas_transacciones pk_formas_transacciones; Type: CONSTRAINT; Schema: public; Owner: postgres
---
 
 ALTER TABLE ONLY public.formas_transacciones
     ADD CONSTRAINT pk_formas_transacciones PRIMARY KEY (cod_forma_transaccion);
 
 
---
--- Name: prestamos pk_prestamos; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
 ALTER TABLE ONLY public.prestamos
     ADD CONSTRAINT pk_prestamos PRIMARY KEY (id_prestamo);
-
-
---
--- Name: sucursales pk_sucursales; Type: CONSTRAINT; Schema: public; Owner: postgres
---
 
 ALTER TABLE ONLY public.sucursales
     ADD CONSTRAINT pk_sucursales PRIMARY KEY (id_sucursal);
 
 
---
--- Name: tipo_cuentas pk_tipo_cuentas; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
 ALTER TABLE ONLY public.tipo_cuentas
     ADD CONSTRAINT pk_tipo_cuentas PRIMARY KEY (cod_tipo_cuenta);
 
-
---
--- Name: tipo_transacciones pk_tipo_transacciones; Type: CONSTRAINT; Schema: public; Owner: postgres
---
 
 ALTER TABLE ONLY public.tipo_transacciones
     ADD CONSTRAINT pk_tipo_transacciones PRIMARY KEY (cod_tipo_transaccion);
 
 
---
--- Name: transacciones pk_transacciones; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
 ALTER TABLE ONLY public.transacciones
     ADD CONSTRAINT pk_transacciones PRIMARY KEY (id_transaccion);
-
-
---
--- Name: ciudades uq_ciudades_nomb; Type: CONSTRAINT; Schema: public; Owner: postgres
---
 
 ALTER TABLE ONLY public.ciudades
     ADD CONSTRAINT uq_ciudades_nomb UNIQUE (nomb_ciudad);
 
 
---
--- Name: clientes uq_clientes_correo; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
 ALTER TABLE ONLY public.clientes
     ADD CONSTRAINT uq_clientes_correo UNIQUE (correo);
-
-
---
--- Name: formas_transacciones uq_formas_transacciones_nomb; Type: CONSTRAINT; Schema: public; Owner: postgres
---
 
 ALTER TABLE ONLY public.formas_transacciones
     ADD CONSTRAINT uq_formas_transacciones_nomb UNIQUE (nomb_forma_transaccion);
 
 
---
--- Name: tipo_cuentas uq_tipo_cuentas_nomb; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
 ALTER TABLE ONLY public.tipo_cuentas
     ADD CONSTRAINT uq_tipo_cuentas_nomb UNIQUE (nomb_tipo_cuenta);
 
 
---
--- Name: tipo_transacciones uq_tipo_transacciones_nomb; Type: CONSTRAINT; Schema: public; Owner: postgres
---
 
 ALTER TABLE ONLY public.tipo_transacciones
     ADD CONSTRAINT uq_tipo_transacciones_nomb UNIQUE (nomb_tipo_transaccion);
 
 
---
--- Name: idx_cuentas_cliente; Type: INDEX; Schema: public; Owner: postgres
---
-
 CREATE INDEX idx_cuentas_cliente ON public.cuentas USING btree (id_cliente);
 
-
---
--- Name: idx_transacciones_cuenta; Type: INDEX; Schema: public; Owner: postgres
---
 
 CREATE INDEX idx_transacciones_cuenta ON public.transacciones USING btree (num_cuenta_origen);
 
 
---
--- Name: transacciones trg_auditar_transaccion; Type: TRIGGER; Schema: public; Owner: postgres
---
 
 CREATE TRIGGER trg_auditar_transaccion AFTER INSERT OR DELETE OR UPDATE ON public.transacciones FOR EACH ROW EXECUTE FUNCTION public.fn_auditar_transaccion();
 
 
---
--- Name: transacciones trg_validar_transaccion; Type: TRIGGER; Schema: public; Owner: postgres
---
-
 CREATE TRIGGER trg_validar_transaccion BEFORE INSERT OR UPDATE ON public.transacciones FOR EACH ROW EXECUTE FUNCTION public.fn_validar_transaccion();
 
-
---
--- Name: cajeros_automaticos fk_cajeros_sucursal; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
 
 ALTER TABLE ONLY public.cajeros_automaticos
     ADD CONSTRAINT fk_cajeros_sucursal FOREIGN KEY (id_sucursal) REFERENCES public.sucursales(id_sucursal);
 
-
---
--- Name: cuentas fk_cuentas_cliente; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
 ALTER TABLE ONLY public.cuentas
     ADD CONSTRAINT fk_cuentas_cliente FOREIGN KEY (id_cliente) REFERENCES public.clientes(id_cliente);
-
-
---
--- Name: cuentas fk_cuentas_tipo; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
 
 ALTER TABLE ONLY public.cuentas
     ADD CONSTRAINT fk_cuentas_tipo FOREIGN KEY (cod_tipo_cuenta) REFERENCES public.tipo_cuentas(cod_tipo_cuenta);
 
-
---
--- Name: prestamos fk_prestamos_cliente; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
 ALTER TABLE ONLY public.prestamos
     ADD CONSTRAINT fk_prestamos_cliente FOREIGN KEY (id_cliente) REFERENCES public.clientes(id_cliente);
-
-
---
--- Name: sucursales fk_sucursales_ciudad; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
 
 ALTER TABLE ONLY public.sucursales
     ADD CONSTRAINT fk_sucursales_ciudad FOREIGN KEY (id_ciudad) REFERENCES public.ciudades(id_ciudad);
 
 
---
--- Name: transacciones fk_transacciones_banca; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
 ALTER TABLE ONLY public.transacciones
     ADD CONSTRAINT fk_transacciones_banca FOREIGN KEY (id_banca_virtual) REFERENCES public.banca_virtual(id_banca_virtual);
-
-
---
--- Name: transacciones fk_transacciones_cajero; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
 
 ALTER TABLE ONLY public.transacciones
     ADD CONSTRAINT fk_transacciones_cajero FOREIGN KEY (id_cajero) REFERENCES public.cajeros_automaticos(id_cajero);
 
-
---
--- Name: transacciones fk_transacciones_cuenta; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
 ALTER TABLE ONLY public.transacciones
     ADD CONSTRAINT fk_transacciones_cuenta FOREIGN KEY (num_cuenta_origen) REFERENCES public.cuentas(num_cuenta);
-
-
---
--- Name: transacciones fk_transacciones_forma; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
 
 ALTER TABLE ONLY public.transacciones
     ADD CONSTRAINT fk_transacciones_forma FOREIGN KEY (cod_forma_transaccion) REFERENCES public.formas_transacciones(cod_forma_transaccion);
 
 
---
--- Name: transacciones fk_transacciones_tipo; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
 ALTER TABLE ONLY public.transacciones
     ADD CONSTRAINT fk_transacciones_tipo FOREIGN KEY (cod_tipo_transaccion) REFERENCES public.tipo_transacciones(cod_tipo_transaccion);
 
-
---
--- Name: SCHEMA public; Type: ACL; Schema: -; Owner: pg_database_owner
---
 
 GRANT USAGE ON SCHEMA public TO grup_cajeros;
 GRANT USAGE ON SCHEMA public TO grup_clientes;
 
 
---
--- Name: FUNCTION fn_auditar_transaccion(); Type: ACL; Schema: public; Owner: postgres
---
-
 GRANT ALL ON FUNCTION public.fn_auditar_transaccion() TO grup_admins;
 
 
---
--- Name: FUNCTION fn_validar_transaccion(); Type: ACL; Schema: public; Owner: postgres
---
-
 GRANT ALL ON FUNCTION public.fn_validar_transaccion() TO grup_admins;
 
-
---
--- Name: FUNCTION realizar_transaccion(p_id_cliente character varying, p_num_cuenta character varying, p_cod_tipo integer, p_cod_forma integer, p_monto numeric, p_id_cajero integer, p_id_banca_virtual integer); Type: ACL; Schema: public; Owner: postgres
---
 
 GRANT ALL ON FUNCTION public.realizar_transaccion(p_id_cliente character varying, p_num_cuenta character varying, p_cod_tipo integer, p_cod_forma integer, p_monto numeric, p_id_cajero integer, p_id_banca_virtual integer) TO grup_admins;
 GRANT ALL ON FUNCTION public.realizar_transaccion(p_id_cliente character varying, p_num_cuenta character varying, p_cod_tipo integer, p_cod_forma integer, p_monto numeric, p_id_cajero integer, p_id_banca_virtual integer) TO grup_cajeros;
 GRANT ALL ON FUNCTION public.realizar_transaccion(p_id_cliente character varying, p_num_cuenta character varying, p_cod_tipo integer, p_cod_forma integer, p_monto numeric, p_id_cajero integer, p_id_banca_virtual integer) TO grup_clientes;
 
 
---
--- Name: TABLE banca_virtual; Type: ACL; Schema: public; Owner: postgres
---
-
 GRANT ALL ON TABLE public.banca_virtual TO grup_admins;
 GRANT SELECT ON TABLE public.banca_virtual TO grup_cajeros;
 
-
---
--- Name: SEQUENCE banca_virtual_id_banca_virtual_seq; Type: ACL; Schema: public; Owner: postgres
---
 
 GRANT ALL ON SEQUENCE public.banca_virtual_id_banca_virtual_seq TO grup_admins;
 GRANT SELECT,USAGE ON SEQUENCE public.banca_virtual_id_banca_virtual_seq TO grup_cajeros;
 
 
---
--- Name: TABLE bitacora_transacciones; Type: ACL; Schema: public; Owner: postgres
---
-
 GRANT ALL ON TABLE public.bitacora_transacciones TO grup_admins;
 GRANT SELECT ON TABLE public.bitacora_transacciones TO grup_cajeros;
 
-
---
--- Name: SEQUENCE bitacora_transacciones_id_bitacora_seq; Type: ACL; Schema: public; Owner: postgres
---
 
 GRANT ALL ON SEQUENCE public.bitacora_transacciones_id_bitacora_seq TO grup_admins;
 GRANT SELECT,USAGE ON SEQUENCE public.bitacora_transacciones_id_bitacora_seq TO grup_cajeros;
 
 
---
--- Name: TABLE cajeros_automaticos; Type: ACL; Schema: public; Owner: postgres
---
-
 GRANT ALL ON TABLE public.cajeros_automaticos TO grup_admins;
 GRANT SELECT ON TABLE public.cajeros_automaticos TO grup_cajeros;
 
 
---
--- Name: TABLE ciudades; Type: ACL; Schema: public; Owner: postgres
---
 
 GRANT ALL ON TABLE public.ciudades TO grup_admins;
 GRANT SELECT ON TABLE public.ciudades TO grup_cajeros;
 
 
---
--- Name: TABLE clientes; Type: ACL; Schema: public; Owner: postgres
---
 
 GRANT ALL ON TABLE public.clientes TO grup_admins;
 GRANT SELECT,INSERT,UPDATE ON TABLE public.clientes TO grup_cajeros;
 GRANT SELECT ON TABLE public.clientes TO grup_clientes;
-
-
---
--- Name: TABLE cuentas; Type: ACL; Schema: public; Owner: postgres
---
 
 GRANT ALL ON TABLE public.cuentas TO grup_admins;
 GRANT SELECT,INSERT,UPDATE ON TABLE public.cuentas TO grup_cajeros;
 GRANT SELECT ON TABLE public.cuentas TO grup_clientes;
 
 
---
--- Name: TABLE formas_transacciones; Type: ACL; Schema: public; Owner: postgres
---
-
 GRANT ALL ON TABLE public.formas_transacciones TO grup_admins;
 GRANT SELECT ON TABLE public.formas_transacciones TO grup_cajeros;
 
-
---
--- Name: TABLE prestamos; Type: ACL; Schema: public; Owner: postgres
---
 
 GRANT ALL ON TABLE public.prestamos TO grup_admins;
 GRANT SELECT,INSERT,UPDATE ON TABLE public.prestamos TO grup_cajeros;
 
 
---
--- Name: TABLE sucursales; Type: ACL; Schema: public; Owner: postgres
---
-
 GRANT ALL ON TABLE public.sucursales TO grup_admins;
 GRANT SELECT ON TABLE public.sucursales TO grup_cajeros;
 
-
---
--- Name: TABLE tipo_cuentas; Type: ACL; Schema: public; Owner: postgres
---
 
 GRANT ALL ON TABLE public.tipo_cuentas TO grup_admins;
 GRANT SELECT ON TABLE public.tipo_cuentas TO grup_cajeros;
 GRANT SELECT ON TABLE public.tipo_cuentas TO grup_clientes;
 
 
---
--- Name: TABLE tipo_transacciones; Type: ACL; Schema: public; Owner: postgres
---
-
 GRANT ALL ON TABLE public.tipo_transacciones TO grup_admins;
 GRANT SELECT ON TABLE public.tipo_transacciones TO grup_cajeros;
 GRANT SELECT ON TABLE public.tipo_transacciones TO grup_clientes;
 
-
---
--- Name: TABLE transacciones; Type: ACL; Schema: public; Owner: postgres
---
 
 GRANT ALL ON TABLE public.transacciones TO grup_admins;
 GRANT SELECT ON TABLE public.transacciones TO grup_cajeros;
 GRANT SELECT ON TABLE public.transacciones TO grup_clientes;
 
 
---
--- Name: SEQUENCE transacciones_id_transaccion_seq; Type: ACL; Schema: public; Owner: postgres
---
-
 GRANT ALL ON SEQUENCE public.transacciones_id_transaccion_seq TO grup_admins;
 GRANT SELECT,USAGE ON SEQUENCE public.transacciones_id_transaccion_seq TO grup_cajeros;
 GRANT SELECT,USAGE ON SEQUENCE public.transacciones_id_transaccion_seq TO grup_clientes;
 
 
---
--- PostgreSQL database dump complete
---
-
 \unrestrict ZZBxj25gIK00ZsjVLfHgFcdRqetBUS6xwYE82ZBV8ERruelWBNI3CkU5hZRLoKW
 
---
--- PostgreSQL database cluster dump
---
 
 \restrict EweoF6ExLYW8EVT8ZbgctdixqL6420EOCkiIDl3tJ8aQKMn57yyDgIQM9o6PQWM
 
@@ -1155,7 +770,6 @@ SET default_transaction_read_only = off;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 
---
 -- Roles
 --
 
@@ -1254,14 +868,7 @@ ALTER ROLE grup_clientes WITH NOSUPERUSER INHERIT NOCREATEROLE NOCREATEDB NOLOGI
 CREATE ROLE postgres;
 ALTER ROLE postgres WITH SUPERUSER INHERIT CREATEROLE CREATEDB LOGIN REPLICATION BYPASSRLS PASSWORD 'SCRAM-SHA-256$4096:9bND9UvOFmCrBCx8Tkm1mg==$KwDNJefTet53eaE4QJurmb+f86XT40aeR820T+jqgBo=:v8QrWiEcErQ+4jXarHkx37qmktBX/81WHzDq3aToJVo=';
 
---
--- User Configurations
---
-
-
---
--- Role memberships
---
+--ROles de usuuarios
 
 GRANT grup_admins TO "9009009001" GRANTED BY postgres;
 GRANT grup_admins TO "9009009002" GRANTED BY postgres;
@@ -1308,11 +915,4 @@ GRANT grup_clientes TO "86012345" GRANTED BY postgres;
 GRANT grup_clientes TO cliente GRANTED BY postgres;
 
 
-
-
 \unrestrict EweoF6ExLYW8EVT8ZbgctdixqL6420EOCkiIDl3tJ8aQKMn57yyDgIQM9o6PQWM
-
---
--- PostgreSQL database cluster dump complete
---
-
