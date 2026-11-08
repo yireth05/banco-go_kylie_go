@@ -1,5 +1,5 @@
 <?php
-// estado_cuentas.php
+// estado_cuentas.php - Historial de Transferencias y Movimientos
 session_start();
 require_once 'conexionDB.php';
 
@@ -10,39 +10,49 @@ if (!isset($_SESSION['rol'])) {
 
 $rol = $_SESSION['rol'];
 $id_cliente = $_SESSION['usuario_id'] ?? $_SESSION['id_cliente'] ?? null;
-$cuentas = [];
+$movimientos = [];
 $error = "";
 
 try {
     if ($rol === 'cliente' && $id_cliente) {
+        // Consulta el historial de transacciones filtrado por las cuentas del cliente actual
         $stmt = $conexion->prepare("
-            SELECT cu.num_cuenta, cu.saldo, cu.fecha_apertura, tc.nomb_tipo_cuenta, cl.id_cliente, cl.nomb_cli, cl.apelli_cli 
-            FROM cuentas cu
-            JOIN tipo_cuentas tc ON cu.cod_tipo_cuenta = tc.cod_tipo_cuenta
+            SELECT t.fecha_transaccion, t.monto_transaccion, t.num_cuenta_origen, 
+                   tt.nomb_tipo_transaccion, ft.nomb_forma_transaccion,
+                   cl.nomb_cli, cl.apelli_cli
+            FROM transacciones t
+            JOIN tipo_transacciones tt ON t.cod_tipo_transaccion = tt.cod_tipo_transaccion
+            JOIN formas_transacciones ft ON t.cod_forma_transaccion = ft.cod_forma_transaccion
+            JOIN cuentas cu ON t.num_cuenta_origen = cu.num_cuenta
             JOIN clientes cl ON cu.id_cliente = cl.id_cliente
             WHERE cu.id_cliente = :cli
-            ORDER BY cu.fecha_apertura DESC
+            ORDER BY t.fecha_transaccion DESC
         ");
         $stmt->execute([':cli' => $id_cliente]);
     } else {
+        // Si es administrador o cajero, muestra el historial completo de todas las transacciones del banco
         $stmt = $conexion->query("
-            SELECT cu.num_cuenta, cu.saldo, cu.fecha_apertura, tc.nomb_tipo_cuenta, cl.id_cliente, cl.nomb_cli, cl.apelli_cli 
-            FROM cuentas cu
-            JOIN tipo_cuentas tc ON cu.cod_tipo_cuenta = tc.cod_tipo_cuenta
-            JOIN clientes cl ON cu.id_cliente = cl.id_cliente
-            ORDER BY cu.fecha_apertura DESC
+            SELECT t.fecha_transaccion, t.monto_transaccion, t.num_cuenta_origen, 
+                   tt.nomb_tipo_transaccion, ft.nomb_forma_transaccion,
+                   cl.nomb_cli, cl.apelli_cli
+            FROM transacciones t
+            JOIN tipo_transacciones tt ON t.cod_tipo_transaccion = tt.cod_tipo_transaccion
+            JOIN formas_transacciones ft ON t.cod_forma_transaccion = ft.cod_forma_transaccion
+            LEFT JOIN cuentas cu ON t.num_cuenta_origen = cu.num_cuenta
+            LEFT JOIN clientes cl ON cu.id_cliente = cl.id_cliente
+            ORDER BY t.fecha_transaccion DESC
         ");
     }
-    $cuentas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $movimientos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    $error = "Error al obtener cuentas: " . $e->getMessage();
+    $error = "Error al obtener el historial: " . $e->getMessage();
 }
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Mis Cuentas y Saldos - Banco Villavicencio</title>
+    <title>Historial de Movimientos - Banco Villavicencio</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
@@ -63,8 +73,8 @@ try {
     <div class="container py-5 mt-3">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h2 class="fw-bold" style="color: var(--color-0e1b48);">Mis Cuentas Bancarias y Saldos</h2>
-                <p class="text-muted mb-0">Consulta el estado actual de tus productos financieros.</p>
+                <h2 class="fw-bold" style="color: var(--color-0e1b48);">Historial de Transferencias y Movimientos</h2>
+                <p class="text-muted mb-0">Consulta detallada de las operaciones y transferencias realizadas.</p>
             </div>
             <a href="index.php" class="btn btn-custom px-4 py-2">← Volver al Panel</a>
         </div>
@@ -76,26 +86,34 @@ try {
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-dark">
                         <tr>
-                            <th>N° Cuenta</th>
-                            <th>Tipo de Cuenta</th>
-                            <?php if ($rol !== 'cliente'): ?><th>Titular</th><?php endif; ?>
-                            <th>Fecha Apertura</th>
-                            <th>Saldo Actual</th>
+                            <th>Fecha y Hora</th>
+                            <th>Tipo de Movimiento</th>
+                            <th>Forma</th>
+                            <th>N° Cuenta Origen</th>
+                            <?php if ($rol !== 'cliente'): ?><th>Cliente / Titular</th><?php endif; ?>
+                            <th>Monto</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if (count($cuentas) > 0): ?>
-                            <?php foreach ($cuentas as $cuenta): ?>
+                        <?php if (count($movimientos) > 0): ?>
+                            <?php foreach ($movimientos as $mov): ?>
                                 <tr>
-                                    <td><strong><?php echo htmlspecialchars($cuenta['num_cuenta']); ?></strong></td>
-                                    <td><?php echo htmlspecialchars($cuenta['nomb_tipo_cuenta']); ?></td>
-                                    <?php if ($rol !== 'cliente'): ?><td><?php echo htmlspecialchars($cuenta['nomb_cli'] . ' ' . $cuenta['apelli_cli']); ?></td><?php endif; ?>
-                                    <td><?php echo date('d/m/Y', strtotime($cuenta['fecha_apertura'])); ?></td>
-                                    <td class="fw-bold text-success">$<?php echo number_format($cuenta['saldo'], 2); ?></td>
+                                    <td><?php echo date('d/m/Y H:i', strtotime($mov['fecha_transaccion'])); ?></td>
+                                    <td>
+                                        <span class="badge bg-info text-dark">
+                                            <?php echo htmlspecialchars($mov['nomb_tipo_transaccion']); ?>
+                                        </span>
+                                    </td>
+                                    <td><?php echo htmlspecialchars($mov['nomb_forma_transaccion']); ?></td>
+                                    <td><strong><?php echo htmlspecialchars($mov['num_cuenta_origen']); ?></strong></td>
+                                    <?php if ($rol !== 'cliente'): ?>
+                                        <td><?php echo htmlspecialchars(($mov['nomb_cli'] ?? 'N/A') . ' ' . ($mov['apelli_cli'] ?? '')); ?></td>
+                                    <?php endif; ?>
+                                    <td class="fw-bold text-success">$<?php echo number_format($mov['monto_transaccion'], 2); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <tr><td colspan="5" class="text-center py-4 text-muted">No hay cuentas registradas en este perfil.</td></tr>
+                            <tr><td colspan="6" class="text-center py-4 text-muted">No hay transacciones ni movimientos registrados.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
