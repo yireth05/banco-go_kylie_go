@@ -136,7 +136,7 @@ $usuario = $_SESSION['usuario'] ?? 'Usuario';
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Mis Datos Personales</h5>
                         <p class="text-muted small">Visualiza y actualiza tu información de contacto, dirección y teléfono.</p>
-                        <a href="perfil_cliente.php" class="btn btn-sm btn-outline-dark mt-auto rounded-pill">Editar mis datos</a>
+                        <a href="editar_cliente.php" class="btn btn-sm btn-outline-dark mt-auto rounded-pill">Editar mis datos</a>
                     </div>
                 </div>
                 <div class="col-md-4">
