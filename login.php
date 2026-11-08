@@ -5,26 +5,29 @@ session_start();
 $error = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $usuario  = trim($_POST['usuario']);
+    $usuario  = $_POST['usuario'] ?? '';
     $password = trim($_POST['password']);
 
-    if (!empty($usuario) && !empty($password)) {
-        $_SESSION['usuario'] = $usuario;
+    // Definición de credenciales fijas para los 3 roles del banco
+    $credenciales_validas = [
+        'administrador' => 'admin123',
+        'cajero'        => 'cajero123',
+        'cliente'       => 'cliente123'
+    ];
 
-        // Validamos los tres roles definidos para el banco
-        if (strtolower($usuario) === 'administrador') {
-            $_SESSION['rol'] = 'administrador';
-        } elseif (strtolower($usuario) === 'cajero') {
-            $_SESSION['rol'] = 'cajero';
-        } else {
-            $_SESSION['rol'] = 'cliente';
-            $_SESSION['id_cliente'] = '1006123456'; // Cédula o ID para aislar los datos privados del cliente
+    // Validar si el usuario existe y la contraseña coincide
+    if (array_key_exists($usuario, $credenciales_validas) && $credenciales_validas[$usuario] === $password) {
+        $_SESSION['usuario'] = $usuario;
+        $_SESSION['rol'] = $usuario; // El rol toma el valor exacto: administrador, cajero o cliente
+
+        if ($usuario === 'cliente') {
+            $_SESSION['id_cliente'] = '1006123456'; // Identificación de prueba para aislar sus datos
         }
 
         header("Location: index.php");
         exit;
     } else {
-        $error = "Por favor completa todos los campos.";
+        $error = "Usuario o contraseña incorrectos.";
     }
 }
 ?>
@@ -98,16 +101,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             color: #ffffff;
             font-weight: 500;
         }
-        .link-brand {
-            color: var(--color-0e1b48);
-            text-decoration: none;
-            font-weight: 600;
-            transition: color 0.2s;
-        }
-        .link-brand:hover {
-            color: var(--color-27425d);
-            text-decoration: underline;
-        }
     </style>
 </head>
 <body class="d-flex align-items-center vh-100">
@@ -117,7 +110,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <div class="text-center mb-3">
                     <span class="badge badge-accent rounded-pill px-3 py-1 mb-2">Banca Segura</span>
                     <h3 class="fw-bold text-brand mb-1">Banco GO KYLIE GO</h3>
-                    <p class="text-muted small">Inicia sesión en tu cuenta</p>
+                    <p class="text-muted small">Selecciona tu rol e ingresa tu contraseña</p>
                 </div>
 
                 <?php if ($error): ?>
@@ -125,20 +118,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <?php endif; ?>
 
                 <form method="POST" action="login.php">
+                    <!-- Menú desplegable para los 3 usuarios -->
                     <div class="mb-3">
-                        <label class="form-label">Usuario</label>
-                        <input type="text" name="usuario" class="form-control form-control-custom" placeholder="Ej: administrador" required>
+                        <label class="form-label">Seleccionar Usuario / Rol</label>
+                        <select name="usuario" class="form-select form-control-custom" required>
+                            <option value="" disabled selected>-- Elige un rol --</option>
+                            <option value="administrador">Administrador</option>
+                            <option value="cajero">Cajero</option>
+                            <option value="cliente">Cliente</option>
+                        </select>
                     </div>
+
                     <div class="mb-4">
                         <label class="form-label">Contraseña</label>
                         <input type="password" name="password" class="form-control form-control-custom" placeholder="••••••••" required>
                     </div>
+
                     <button type="submit" class="btn btn-custom w-100 mt-2">Iniciar Sesión</button>
                 </form>
 
-                <!-- Botón / Enlace para ir a Crear Cliente -->
+                <!-- Botón para ir a Crear Cliente -->
                 <div class="text-center mt-4 pt-3 border-top">
-                    <p class="text-muted small mb-2">¿Eres nuevo o necesitas registrar a alguien?</p>
+                    <p class="text-muted small mb-2">¿Necesitas registrar un cliente nuevo?</p>
                     <a href="Crearcliente.php" class="btn btn-outline-secondary w-100 rounded-pill py-2 fw-semibold" style="border-color: var(--color-87a7d0); color: var(--color-0e1b48);">
                         Crear Nuevo Cliente ➔
                     </a>
