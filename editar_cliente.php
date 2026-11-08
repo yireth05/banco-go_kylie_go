@@ -15,8 +15,6 @@ $mensaje = "";
 
 // 1. SI ES CLIENTE: Edita solo sus propios datos
 if ($rol === 'cliente') {
-    $id_a_editar = $usuario_id;
-    
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $nomb = $_POST['nomb_cli'] ?? '';
         $apelli = $_POST['apelli_cli'] ?? '';
@@ -42,7 +40,6 @@ if ($rol === 'cliente') {
 } 
 else {
     // 2. SI ES CAJERO O ADMINISTRADOR:
-    // Verificamos si se seleccionó un cliente específico para editar mediante ?id=...
     $id_editar_personal = $_GET['id'] ?? null;
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && $id_editar_personal) {
@@ -60,7 +57,6 @@ else {
         }
     }
 
-    // Si hay un ID en la URL, cargamos los datos de ese cliente para mostrarlos en el formulario de edición
     $cliente_a_editar = null;
     if ($id_editar_personal) {
         try {
@@ -71,20 +67,20 @@ else {
             $error = "Error al obtener el cliente: " . $e->getMessage();
         }
     } else {
-        // Si no hay ID, cargamos el listado completo y la barra de búsqueda
         $busqueda = trim($_GET['q'] ?? '');
         try {
             if ($busqueda !== '') {
+                // Consulta segura compatible con PostgreSQL
                 $stmt = $conexion->prepare("
                     SELECT DISTINCT c.*, cu.num_cuenta, tc.nomb_tipo_cuenta 
                     FROM clientes c
                     LEFT JOIN cuentas cu ON c.id_cliente = cu.id_cliente
                     LEFT JOIN tipo_cuentas tc ON cu.cod_tipo_cuenta = tc.cod_tipo_cuenta
-                    WHERE c.nomb_cli ILIKE ? OR c.apelli_cli ILIKE ? OR c.id_cliente::text ILIKE ?
+                    WHERE LOWER(c.nomb_cli) LIKE LOWER(?) OR LOWER(c.apelli_cli) LIKE LOWER(?)
                     ORDER BY c.id_cliente DESC
                 ");
                 $like = "%" . $busqueda . "%";
-                $stmt->execute([$like, $like, $like]);
+                $stmt->execute([$like, $like]);
             } else {
                 $stmt = $conexion->query("
                     SELECT DISTINCT c.*, cu.num_cuenta, tc.nomb_tipo_cuenta 
@@ -126,7 +122,6 @@ else {
     <div class="container py-5 mt-3">
         
         <?php if ($rol === 'cliente'): ?>
-            <!-- VISTA CLIENTE -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h2 class="fw-bold" style="color: var(--color-0e1b48);">Mis Datos Personales</h2>
@@ -161,10 +156,8 @@ else {
             </div>
 
         <?php else: ?>
-            <!-- VISTA CAJERO / ADMIN -->
             
             <?php if ($id_editar_personal && $cliente_a_editar): ?>
-                <!-- FORMULARIO DE EDICIÓN PARA UN CLIENTE SELECCIONADO -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <h2 class="fw-bold" style="color: var(--color-0e1b48);">Actualizar Datos del Cliente</h2>
@@ -199,7 +192,6 @@ else {
                 </div>
 
             <?php else: ?>
-                <!-- LISTADO GENERAL CON BUSCADOR -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <h2 class="fw-bold" style="color: var(--color-0e1b48);">Gestión y Actualización de Clientes</h2>
@@ -210,10 +202,9 @@ else {
 
                 <?php if ($error): ?><div class="alert alert-danger rounded-4"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
 
-                <!-- Barra de Búsqueda -->
                 <div class="card card-custom p-3 bg-white mb-4">
                     <form method="GET" class="input-group">
-                        <input type="text" name="q" class="form-control" placeholder="Buscar por nombre, apellido o ID de cliente..." value="<?php echo htmlspecialchars($_GET['q'] ?? ''); ?>">
+                        <input type="text" name="q" class="form-control" placeholder="Buscar por nombre o apellido..." value="<?php echo htmlspecialchars($_GET['q'] ?? ''); ?>">
                         <button class="btn btn-dark px-4" type="submit">Buscar</button>
                         <?php if (!empty($_GET['q'])): ?>
                             <a href="editar_cliente.php" class="btn btn-outline-secondary">Limpiar</a>
@@ -221,7 +212,6 @@ else {
                     </form>
                 </div>
 
-                <!-- Tabla de Clientes -->
                 <div class="card card-custom p-4 bg-white">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
@@ -268,6 +258,9 @@ else {
 
         <?php endif; ?>
 
+    </div>
+</body>
+</html>
     </div>
 </body>
 </html>
