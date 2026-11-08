@@ -17,68 +17,98 @@ try {
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Listado de Clientes - Banco Villavicencio</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta charset="UTF-8">
+    <title>Listado de Clientes - Banco Villavicencio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- 1. Cargar la librería de SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="bg-light">
-  <?php if (file_exists("navbar.php")) include_once "navbar.php"; ?>
+    <?php if (file_exists("navbar.php")) include_once "navbar.php"; ?>
 
-  <div class="container mt-4 mb-5">
-      <div class="row">
-          <div class="col-md-12">
-              <div class="card shadow border-0 rounded-4">
-                  <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
-                      <h4 class="mb-0 fs-5">Lista de Clientes - Banco Villavicencio</h4>
-                      <div>
-                          <a href="index.php" class="btn btn-outline-light btn-sm rounded-pill me-2">Volver al Panel</a>
-                          <a href="Crearcliente.php" class="btn btn-success btn-sm rounded-pill">Registrar Nuevo Cliente</a>
-                      </div>
-                  </div>
-                  
-                  <div class="card-body p-4">
-                      <div class="table-responsive">
-                          <table class="table table-striped table-bordered align-middle mb-0">
-                              <thead class="table-dark">
-                                  <tr>
-                                      <th>Cédula / ID</th>
-                                      <th>Nombre</th>
-                                      <th>Apellido</th>
-                                      <th>Dirección</th>
-                                      <th>Teléfono</th>
-                                      <th>Correo</th>
-                                      <th>Acciones</th>
-                                  </tr>
-                              </thead>
-                              <tbody>
-                                  <?php if (!empty($clientes)): ?>
-                                      <?php foreach($clientes as $cliente): ?>
-                                          <tr>
-                                              <td><strong><?php echo htmlspecialchars($cliente['id_cliente']); ?></strong></td>
-                                              <td><?php echo htmlspecialchars($cliente['nomb_cli']); ?></td>
-                                              <td><?php echo htmlspecialchars($cliente['apelli_cli']); ?></td>
-                                              <td><?php echo htmlspecialchars($cliente['direccion'] ?? 'N/A'); ?></td>
-                                              <td><?php echo htmlspecialchars($cliente['telefono'] ?? 'N/A'); ?></td>
-                                              <td><?php echo htmlspecialchars($cliente['correo'] ?? 'N/A'); ?></td>
-                                              <td>
-                                                  <a href="editar_cliente.php?id=<?php echo urlencode($cliente['id_cliente']); ?>" class="btn btn-warning btn-sm rounded-pill">Editar</a>
-                                                  <a href="eliminar_cliente.php?id=<?php echo urlencode($cliente['id_cliente']); ?>" class="btn btn-danger btn-sm rounded-pill" onclick="return confirm('¿Estás seguro de eliminar este cliente?');">Eliminar</a>
-                                              </td>
-                                          </tr>
-                                      <?php endforeach; ?>
-                                  <?php else: ?>
-                                      <tr>
-                                          <td colspan="7" class="text-center text-muted py-4">No hay clientes registrados en la base de datos.</td>
-                                      </tr>
-                                  <?php endif; ?>
-                              </tbody>
-                          </table>
-                      </div>
-                  </div>
-              </div>
-          </div>
-      </div>
-  </div>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <div class="container mt-4 mb-5">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card shadow border-0 rounded-4">
+                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
+                        <h4 class="mb-0 fs-5">Lista de Clientes - Banco Villavicencio</h4>
+                        <div>
+                            <a href="index.php" class="btn btn-outline-light btn-sm rounded-pill me-2">Volver al Panel</a>
+                            <a href="Crearcliente.php" class="btn btn-success btn-sm rounded-pill">Registrar Nuevo Cliente</a>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body p-4">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-bordered align-middle mb-0">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Cédula / ID</th>
+                                        <th>Nombre</th>
+                                        <th>Apellido</th>
+                                        <th>Dirección</th>
+                                        <th>Teléfono</th>
+                                        <th>Correo</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (!empty($clientes)): ?>
+                                        <?php foreach($clientes as $cliente): ?>
+                                            <tr>
+                                                <td><strong><?php echo htmlspecialchars($cliente['id_cliente']); ?></strong></td>
+                                                <td><?php echo htmlspecialchars($cliente['nomb_cli']); ?></td>
+                                                <td><?php echo htmlspecialchars($cliente['apelli_cli']); ?></td>
+                                                <td><?php echo htmlspecialchars($cliente['direccion'] ?? 'N/A'); ?></td>
+                                                <td><?php echo htmlspecialchars($cliente['telefono'] ?? 'N/A'); ?></td>
+                                                <td><?php echo htmlspecialchars($cliente['correo'] ?? 'N/A'); ?></td>
+                                                <td>
+                                                    <a href="editar_cliente.php?id=<?php echo urlencode($cliente['id_cliente']); ?>" class="btn btn-warning btn-sm rounded-pill">Editar</a>
+                                                    
+                                                    <!-- 2. Botón modificado para llamar a la función de SweetAlert2 -->
+                                                    <button type="button" class="btn btn-danger btn-sm rounded-pill" onclick="confirmarEliminacion('<?php echo $cliente['id_cliente']; ?>')">Eliminar</button>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <tr>
+                                            <td colspan="7" class="text-center text-muted py-4">No hay clientes registrados en la base de datos.</td>
+                                        </tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- 3. Script con la lógica de la alerta estética -->
+    <script>
+    function confirmarEliminacion(idCliente) {
+        Swal.fire({
+            title: '¿Estás seguro?',
+            text: "¡Esta acción intentará eliminar al cliente del sistema!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true,
+            customClass: {
+                popup: 'rounded-4 shadow'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Redirige al archivo que ejecuta el DELETE en PostgreSQL
+                window.location.href = 'eliminar_cliente.php?id=' + idCliente;
+            }
+        });
+    }
+    </script>
 </body>
 </html>
