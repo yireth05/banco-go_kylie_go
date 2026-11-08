@@ -1,141 +1,155 @@
 <?php
-// login.php
 session_start();
 
-$error = "";
-
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $usuario  = $_POST['usuario'] ?? '';
-    $password = trim($_POST['password']);
-
-    // Definición de credenciales fijas para los 3 roles del banco
-    $credenciales_validas = [
-        'administrador' => 'admin123',
-        'cajero'        => 'cajero123',
-        'cliente'       => 'cliente123'
-    ];
-
-    if (array_key_exists($usuario, $credenciales_validas) && $credenciales_validas[$usuario] === $password) {
-        $_SESSION['usuario'] = $usuario;
-        $_SESSION['rol'] = $usuario; 
-
-        if ($usuario === 'cliente') {
-            $_SESSION['id_cliente'] = '1006123456'; 
-        }
-
-        header("Location: index.php");
-        exit;
-    } else {
-        $error = "Usuario o contraseña incorrectos.";
-    }
+// Si no ha iniciado sesión, lo devolvemos al login
+if (!isset($_SESSION['rol'])) {
+    header("Location: login.php");
+    exit;
 }
+
+$rol = $_SESSION['rol'];
+$usuario = $_SESSION['usuario'] ?? 'Usuario';
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Banco GO KYLIE GO</title>
+    <title>Panel Principal - Banco GO KYLIE GO</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
-            --color-0e1b48: #0E1B48; /* Azul Marino Principal */
-            --color-c18db4: #C18DB4; /* Rosa Oscuro / Acento */
-            --color-e2cad8: #E2CAD8; /* Rosa Claro / Fondo suave */
-            --color-87a7d0: #87A7D0; /* Azul Claro / Bordes */
-            --color-27425d: #27425D; /* Azul Pizarra / Hover */
-            --color-0e1f2f: #0E1F2F; /* Azul Noche / Textos */
+            --color-0e1b48: #0E1B48;
+            --color-c18db4: #C18DB4;
+            --color-e2cad8: #E2CAD8;
+            --color-87a7d0: #87A7D0;
+            --color-27425d: #27425D;
+            --color-0e1f2f: #0E1F2F;
         }
         body {
-            background: linear-gradient(135deg, var(--color-e2cad8) 0%, var(--color-87a7d0) 100%);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            min-height: 100vh;
+            background-color: #f4f6f9;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
-        .card-custom {
-            border-radius: 24px;
+        .navbar-custom { background-color: var(--color-0e1b48); }
+        .card-menu {
+            border-radius: 16px;
             border: none;
-            box-shadow: 0 15px 35px rgba(14, 27, 72, 0.15);
-            background-color: #ffffff;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
-        .text-brand { 
-            color: var(--color-0e1b48); 
-        }
-        .form-label {
-            color: var(--color-0e1f2f);
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-        .form-control-custom {
-            border-radius: 12px;
-            padding: 12px 16px;
-            border: 2px solid var(--color-e2cad8);
-            background-color: #fcfcfd;
-            color: var(--color-0e1f2f);
-            transition: all 0.3s ease;
-        }
-        .form-control-custom:focus {
-            border-color: var(--color-87a7d0);
-            box-shadow: 0 0 0 4px rgba(135, 167, 208, 0.25);
-            background-color: #ffffff;
-        }
-        .btn-custom {
-            background-color: var(--color-0e1b48);
-            color: #ffffff;
-            border-radius: 50rem;
-            padding: 12px 24px;
-            border: none;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 10px rgba(14, 27, 72, 0.2);
-        }
-        .btn-custom:hover {
-            background-color: var(--color-27425d);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(39, 66, 93, 0.3);
-            color: var(--color-e2cad8);
-        }
-        .badge-accent {
-            background-color: var(--color-c18db4);
-            color: #ffffff;
-            font-weight: 500;
+        .card-menu:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(14, 27, 72, 0.12);
         }
     </style>
 </head>
-<body class="d-flex align-items-center vh-100">
-    <div class="container" style="max-width: 420px;">
-        <div class="card card-custom p-2">
-            <div class="card-body p-4">
-                <div class="text-center mb-4">
-                    <span class="badge badge-accent rounded-pill px-3 py-1 mb-2">Banca Segura</span>
-                    <h3 class="fw-bold text-brand mb-1">Banco GO KYLIE GO</h3>
-                    <p class="text-muted small">Selecciona tu rol e ingresa tu contraseña</p>
-                </div>
+<body>
 
-                <?php if ($error): ?>
-                    <div class="alert alert-danger py-2 small text-center rounded-4" style="background-color: #f8d7da; color: #842029; border: none;"><?php echo $error; ?></div>
-                <?php endif; ?>
-
-                <form method="POST" action="login.php">
-                    <div class="mb-3">
-                        <label class="form-label">Seleccionar Usuario / Rol</label>
-                        <select name="usuario" class="form-select form-control-custom" required>
-                            <option value="" disabled selected>-- Elige un rol --</option>
-                            <option value="administrador">Administrador</option>
-                            <option value="cajero">Cajero</option>
-                            <option value="cliente">Cliente</option>
-                        </select>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="form-label">Contraseña</label>
-                        <input type="password" name="password" class="form-control form-control-custom" placeholder="••••••••" required>
-                    </div>
-
-                    <button type="submit" class="btn btn-custom w-100 mt-2">Iniciar Sesión</button>
-                </form>
+    <!-- Navbar Superior -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom px-4 py-3">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="index.php">🏦 Banco GO KYLIE GO</a>
+            <div class="ms-auto d-flex align-items-center gap-3">
+                <span class="text-light small">Hola, <strong><?php echo ucfirst($usuario); ?></strong> (Rol: <span class="badge bg-light text-dark"><?php echo ucfirst($rol); ?></span>)</span>
+                <a href="logout.php" class="btn btn-outline-light btn-sm rounded-pill px-3">Cerrar Sesión</a>
             </div>
         </div>
+    </nav>
+
+    <!-- Contenido Dinámico según el Rol -->
+    <div class="container py-5">
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="p-4 rounded-4 shadow-sm text-white" style="background: linear-gradient(135deg, var(--color-0e1b48), var(--color-27425d));">
+                    <h1 class="fw-bold fs-3">Bienvenido al Panel de Control</h1>
+                    <p class="mb-0 text-white-50">Estás operando bajo el perfil de <strong><?php echo strtoupper($rol); ?></strong>.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 1. VISTA EXCLUSIVA PARA ADMINISTRADOR -->
+        <?php if ($rol === 'administrador'): ?>
+            <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">⚙️ Gestión Administrativa y Auditoría</h4>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="card card-menu p-4 bg-white h-100">
+                        <h5 class="fw-bold text-dark">Gestión de Usuarios</h5>
+                        <p class="text-muted small">Crear, editar, eliminar usuarios y control de accesos del sistema.</p>
+                        <a href="#" class="btn btn-sm btn-dark mt-auto rounded-pill">Administrar Usuarios</a>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card card-menu p-4 bg-white h-100">
+                        <h5 class="fw-bold text-dark">Configuraciones del Banco</h5>
+                        <p class="text-muted small">Gestión de sucursales, ciudades, cajeros y tipos de cuenta.</p>
+                        <a href="#" class="btn btn-sm btn-dark mt-auto rounded-pill">Ver Configuraciones</a>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card card-menu p-4 bg-white h-100">
+                        <h5 class="fw-bold text-dark">Auditoría y Bitácora</h5>
+                        <p class="text-muted small">Revisión de la bitácora global de transacciones y seguridad.</p>
+                        <a href="#" class="btn btn-sm btn-dark mt-auto rounded-pill">Ver Auditoría</a>
+                    </div>
+                </div>
+            </div>
+
+        <!-- 2. VISTA EXCLUSIVA PARA CAJERO -->
+        <?php elseif ($rol === 'cajero'): ?>
+            <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">💼 Ventanilla y Operaciones de Caja</h4>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="card card-menu p-4 bg-white h-100">
+                        <h5 class="fw-bold text-dark">Gestión de Clientes</h5>
+                        <p class="text-muted small">Registrar nuevo cliente, actualizar datos y consultar perfiles.</p>
+                        <a href="Crearcliente.php" class="btn btn-sm btn-primary mt-auto rounded-pill" style="background-color: var(--color-0e1b48);">Registrar Cliente</a>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card card-menu p-4 bg-white h-100">
+                        <h5 class="fw-bold text-dark">Cuentas y Préstamos</h5>
+                        <p class="text-muted small">Abrir nueva cuenta, modificar cuentas y registrar préstamos.</p>
+                        <a href="crear_cuenta.php" class="btn btn-sm btn-primary mt-auto rounded-pill" style="background-color: var(--color-0e1b48);">Gestionar Cuentas</a>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card card-menu p-4 bg-white h-100">
+                        <h5 class="fw-bold text-dark">Transacciones</h5>
+                        <p class="text-muted small">Realizar transacciones en ventanilla y leer bitácoras de operaciones.</p>
+                        <a href="Crear-RealizarTransacciones.php" class="btn btn-sm btn-primary mt-auto rounded-pill" style="background-color: var(--color-0e1b48);">Hacer Transacción</a>
+                    </div>
+                </div>
+            </div>
+
+        <!-- 3. VISTA EXCLUSIVA PARA CLIENTE -->
+        <?php elseif ($rol === 'cliente'): ?>
+            <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">👤 Mi Portal Bancario</h4>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="card card-menu p-4 bg-white h-100">
+                        <h5 class="fw-bold text-dark">Mis Datos Personales</h5>
+                        <p class="text-muted small">Ver y actualizar tu información personal de contacto.</p>
+                        <a href="#" class="btn btn-sm btn-outline-dark mt-auto rounded-pill">Ver mis datos</a>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card card-menu p-4 bg-white h-100">
+                        <h5 class="fw-bold text-dark">Mis Cuentas y Saldos</h5>
+                        <p class="text-muted small">Consulta el saldo actual de tus cuentas y estado de productos.</p>
+                        <a href="estado_cuentas.php" class="btn btn-sm btn-outline-dark mt-auto rounded-pill">Ver mis cuentas</a>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card card-menu p-4 bg-white h-100">
+                        <h5 class="fw-bold text-dark">Transferencias</h5>
+                        <p class="text-muted small">Realiza transferencias y revisa tu historial personal de movimientos.</p>
+                        <a href="Crear-RealizarTransacciones.php" class="btn btn-sm btn-outline-dark mt-auto rounded-pill">Transferir Fondos</a>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
+
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
