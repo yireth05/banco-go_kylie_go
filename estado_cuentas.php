@@ -11,10 +11,11 @@ if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'cliente') {
 $id_cliente = $_SESSION['id_cliente'];
 $cuenta_seleccionada = $_GET['num_cuenta'] ?? '';
 $movimientos = [];
+$cuenta_info = null;
 $error = "";
 
 try {
-    // 1. Obtener todas las cuentas del cliente para llenar el selector
+    // 1. Obtener todas las cuentas del cliente para llenar el selector limpio
     $stmt_cuentas = $conexion->prepare("
         SELECT c.num_cuenta, c.saldo, tc.nomb_tipo_cuenta 
         FROM cuentas c 
@@ -30,17 +31,20 @@ try {
         $cuenta_seleccionada = $mis_cuentas[0]['num_cuenta'];
     }
 
-    // 2. Si hay una cuenta seleccionada, consultamos su historial de transacciones
+    // 2. Buscar la información de la cuenta seleccionada para mostrarla en la tarjeta bonita
     if (!empty($cuenta_seleccionada)) {
-        // Validamos primero que la cuenta pertenezca realmente al cliente logueado por seguridad
-        $stmt_valida = $conexion->prepare("SELECT num_cuenta FROM cuentas WHERE num_cuenta = :num AND id_cliente = :id");
-        $stmt_valida->execute([':num' => $cuenta_seleccionada, ':id' => $id_cliente]);
-        
-        if ($stmt_valida->fetch()) {
-            // Consultar transacciones de esta cuenta (origen o involucradas)
+        foreach ($mis_cuentas as $cta) {
+            if ($cta['num_cuenta'] == $cuenta_seleccionada) {
+                $cuenta_info = $cta;
+                break;
+            }
+        }
+
+        if ($cuenta_info) {
+            // Consultar transacciones usando id_transaccion (Corregido el error de columna)
             $stmt_historial = $conexion->prepare("
                 SELECT 
-                    t.num_transaccion,
+                    t.id_transaccion,
                     t.fecha_transaccion,
                     tt.nomb_tipo_transaccion,
                     ft.nomb_forma_transaccion,
@@ -93,33 +97,54 @@ try {
             <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
 
-        <!-- Selector de Cuenta -->
+        <!-- Selector de Cuenta Limpio -->
         <div class="card card-custom p-4 bg-white mb-4">
             <form method="GET" action="" class="row align-items-end">
-                <div class="col-md-8">
+                <div class="col-md-9">
                     <label class="form-label fw-bold text-dark">Seleccione la Cuenta a Consultar:</label>
                     <select name="num_cuenta" class="form-select form-select-lg" onchange="this.form.submit()">
                         <?php foreach ($mis_cuentas as $cta): ?>
                             <option value="<?php echo htmlspecialchars($cta['num_cuenta']); ?>" <?php echo ($cuenta_seleccionada == $cta['num_cuenta']) ? 'selected' : ''; ?>>
-                                Cuenta Nº: <?php echo htmlspecialchars($cta['num_cuenta']); ?> (<?php echo htmlspecialchars($cta['nomb_tipo_cuenta']); ?>) - Saldo: $<?php echo number_format($cta['saldo'], 2, ',', '.'); ?>
+                                Cuenta Nº: <?php echo htmlspecialchars($cta['num_cuenta']); ?> (<?php echo htmlspecialchars($cta['nomb_tipo_cuenta']); ?>)
                             </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-4 mt-3 mt-md-0">
-                    <button type="submit" class="btn btn-dark w-100 py-2 rounded-pill" style="background-color: #0E1B48;">Consultar Movimientos</button>
+                <div class="col-md-3 mt-3 mt-md-0">
+                    <button type="submit" class="btn btn-dark w-100 py-2 rounded-pill" style="background-color: #0E1B48;">Cambiar Cuenta</button>
                 </div>
             </form>
         </div>
 
+        <!-- Tarjeta Bonita de Resumen de la Cuenta Seleccionada -->
+        <?php if ($cuenta_info): ?>
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card card-custom bg-white p-4 border-start border-4 border-primary">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <span class="text-muted small text-uppercase fw-bold">Cuenta Seleccionada</span>
+                                <h4 class="fw-bold text-dark mb-1">Nº: <?php echo htmlspecialchars($cuenta_info['num_cuenta']); ?></h4>
+                                <span class="badge bg-secondary"><?php echo htmlspecialchars($cuenta_info['nomb_tipo_cuenta']); ?></span>
+                            </div>
+                            <div class="col-md-6 text-md-end mt-3 mt-md-0">
+                                <span class="text-muted small text-uppercase fw-bold d-block">Saldo Disponible</span>
+                                <h2 class="fw-bold text-success mb-0">$<?php echo number_format($cuenta_info['saldo'], 2, ',', '.'); ?></h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
+
         <!-- Tabla de Movimientos / Historial -->
         <div class="card card-custom p-4 bg-white">
-            <h5 class="fw-bold mb-3 text-secondary">Movimientos de la cuenta: <span class="text-dark"><?php echo htmlspecialchars($cuenta_seleccionada); ?></span></h5>
+            <h5 class="fw-bold mb-3 text-secondary">Movimientos Recientes</h5>
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead class="table-dark">
                         <tr>
-                            <th>Nº Transacción</th>
+                            <th>ID Transacción</th>
                             <th>Fecha y Hora</th>
                             <th>Tipo de Transacción</th>
                             <th>Forma de Pago</th>
@@ -130,12 +155,12 @@ try {
                         <?php if (!empty($movimientos)): ?>
                             <?php foreach ($movimientos as $mov): ?>
                                 <tr>
-                                    <td><code>#<?php echo htmlspecialchars($mov['num_transaccion']); ?></code></td>
+                                    <td><code>#<?php echo htmlspecialchars($mov['id_transaccion']); ?></code></td>
                                     <td><?php echo htmlspecialchars($mov['fecha_transaccion']); ?></td>
                                     <td><span class="badge bg-info text-dark"><?php echo htmlspecialchars($mov['nomb_tipo_transaccion']); ?></span></td>
                                     <td><?php echo htmlspecialchars($mov['nomb_forma_transaccion']); ?></td>
                                     <td class="fw-bold text-success">
-                                        +$<?php echo number_format($mov['monto_transaccion'], 2, ',', '.'); ?>
+                                        $<?php echo number_format($mov['monto_transaccion'], 2, ',', '.'); ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
