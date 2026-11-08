@@ -30,7 +30,10 @@ try {
               <div class="card shadow border-0 rounded-4">
                   <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
                       <h4 class="mb-0 fs-5">Lista de Clientes - Banco Villavicencio</h4>
-                      <a href="Crearcliente.php" class="btn btn-success btn-sm rounded-pill">Registrar Nuevo Cliente</a>
+                      <div>
+                          <a href="index.php" class="btn btn-outline-light btn-sm rounded-pill me-2">Volver al Panel</a>
+                          <a href="Crearcliente.php" class="btn btn-success btn-sm rounded-pill">Registrar Nuevo Cliente</a>
+                      </div>
                   </div>
                   
                   <div class="card-body p-4">
@@ -59,6 +62,7 @@ try {
                                               <td><?php echo htmlspecialchars($cliente['correo'] ?? 'N/A'); ?></td>
                                               <td>
                                                   <a href="editar_cliente.php?id=<?php echo urlencode($cliente['id_cliente']); ?>" class="btn btn-warning btn-sm rounded-pill">Editar</a>
+                                                  <a href="eliminar_cliente.php?id=<?php echo urlencode($cliente['id_cliente']); ?>" class="btn btn-danger btn-sm rounded-pill" onclick="return confirm('¿Estás seguro de eliminar este cliente?');">Eliminar</a>
                                               </td>
                                           </tr>
                                       <?php endforeach; ?>
@@ -78,9 +82,3 @@ try {
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-        </div>
-    </div>
-
-</body>
-</html>
-  
