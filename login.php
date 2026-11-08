@@ -1,5 +1,7 @@
 <?php
 // login.php
+<?php
+// login.php
 session_start();
 
 $error = "";
@@ -8,17 +10,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $usuario  = trim($_POST['usuario']);
     $password = trim($_POST['password']);
 
-    // Validación rápida para pruebas de rol y acceso
     if (!empty($usuario) && !empty($password)) {
         $_SESSION['usuario'] = $usuario;
 
-        if ($usuario === 'administrador') {
+        // Validamos los tres roles definidos para el banco
+        if (strtolower($usuario) === 'administrador') {
             $_SESSION['rol'] = 'administrador';
-        } elseif ($usuario === 'cajero') {
+        } elseif (strtolower($usuario) === 'cajero') {
             $_SESSION['rol'] = 'cajero';
         } else {
             $_SESSION['rol'] = 'cliente';
-            $_SESSION['id_cliente'] = '1006123456';
+            $_SESSION['id_cliente'] = '1006123456'; // Cédula o ID para aislar los datos privados del cliente
         }
 
         header("Location: index.php");
