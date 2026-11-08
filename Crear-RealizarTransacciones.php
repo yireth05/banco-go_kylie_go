@@ -44,7 +44,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             ':banca'   => $id_banca_virtual
         ]);
         
-        $mensaje = "<div class='alert alert-success alert-dismissible fade show' role='alert'>¡Transacción realizada con éxito!<button type='button' class='btn-close' data-bs-dismiss='alert'></button></div>";
+        $mensaje = "<div class='alert alert-success alert-dismissible fade show shadow-sm rounded-3' role='alert'><strong>¡Transacción realizada con éxito!</strong> El movimiento se registró y auditó correctamente.<button type='button' class='btn-close' data-bs-dismiss='alert'></button></div>";
     } catch (Exception $e) {
         $errorCompleto = $e->getMessage();
         if (preg_match('/ERROR:\s*(.*?)(?=\nCONTEXT:|$)/s', $errorCompleto, $coincidencias)) {
@@ -52,7 +52,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         } else {
             $mensajeAmigable = $errorCompleto;
         }
-        $mensaje = "<div class='alert alert-danger alert-dismissible fade show' role='alert'><strong>Atención:</strong> " . htmlspecialchars($mensajeAmigable) . "<button type='button' class='btn-close' data-bs-dismiss='alert'></button></div>";
+        $mensaje = "<div class='alert alert-danger alert-dismissible fade show shadow-sm rounded-3' role='alert'><strong>Error en la Transacción:</strong> " . htmlspecialchars($mensajeAmigable) . "<button type='button' class='btn-close' data-bs-dismiss='alert'></button></div>";
     }
 }
 ?>
@@ -72,7 +72,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             <div class="col-md-8">
                 <div class="card shadow border-0 rounded-4">
                     <div class="card-header text-white py-3 rounded-top-4" style="background-color: #0E1B48;">
-                        <h4 class="mb-0 fs-5">💸 Módulo de Transacciones</h4>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4 class="mb-0 fs-5">Módulo de Transacciones - Banco Villavicencio</h4>
+                            <a href="index.php" class="btn btn-outline-light btn-sm rounded-pill">Volver al Panel</a>
+                        </div>
                     </div>
                     <div class="card-body p-4">
                         <?php echo $mensaje; ?>
@@ -124,13 +127,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
                             <?php if ($_SESSION['rol'] !== 'cliente'): ?>
                                 <div class="mb-3">
-                                    <label class="form-label text-muted">ID Cajero Físico (Terminal)</label>
+                                    <label class="form-label text-muted fw-bold">ID Cajero Físico (Terminal)</label>
                                     <input type="number" class="form-control" name="id_cajero" value="1" placeholder="Ej: 1">
                                 </div>
                             <?php endif; ?>
 
                             <div class="d-grid mt-4">
-                                <button type="submit" class="btn btn-success btn-lg rounded-pill">Procesar Transacción</button>
+                                <button type="submit" class="btn btn-success btn-lg rounded-pill shadow-sm">Procesar Transacción</button>
                             </div>
                         </form>
                     </div>
@@ -156,12 +159,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
                 if (cuentasFiltradas.length > 0) {
                     selectCuenta.disabled = false;
-                    mensajeCliente.innerHTML = "<span class='text-success fw-semibold'>¡Cliente encontrado! Seleccione la cuenta.</span>";
+                    mensajeCliente.innerHTML = "<span class='text-success fw-semibold'>¡Cliente encontrado! Seleccione una cuenta.</span>";
                     
                     cuentasFiltradas.forEach(function(cuenta) {
                         var option = document.createElement('option');
                         option.value = cuenta.num_cuenta;
-                        option.text = "Cuenta Nº: " + cuenta.num_cuenta + " (Saldo: $" + parseFloat(cuenta.saldo).toLocaleString('es-CO') + ")";
+                        option.text = "Cuenta Nº: " + cuenta.num_cuenta + " (Saldo: $" + parseFloat(cuenta.saldo).toLocaleString('es-CO', {minimumFractionDigits: 2}) + ")";
                         selectCuenta.appendChild(option);
                     });
                 } else {
