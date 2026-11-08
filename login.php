@@ -7,27 +7,42 @@ $error = "";
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $usuario  = $_POST['usuario'] ?? '';
     $password = trim($_POST['password']);
+    $cedula   = trim($_POST['cedula'] ?? '');
 
-    // Definición de credenciales fijas para los 3 roles del banco
-    $credenciales_validas = [
-        'administrador' => 'admin123',
-        'cajero'        => 'cajero123',
-        'cliente'       => 'cliente123'
-    ];
-
-    // Validar si el usuario existe y la contraseña coincide
-    if (array_key_exists($usuario, $credenciales_validas) && $credenciales_validas[$usuario] === $password) {
-        $_SESSION['usuario'] = $usuario;
-        $_SESSION['rol'] = $usuario; // El rol toma el valor exacto: administrador, cajero o cliente
-
-        if ($usuario === 'cliente') {
-            $_SESSION['id_cliente'] = '1006123456'; // Identificación de prueba para aislar sus datos
+    if ($usuario === 'administrador') {
+        // Validación de Administrador
+        if ($password === 'admin123') {
+            $_SESSION['usuario'] = 'Administrador';
+            $_SESSION['rol'] = 'administrador';
+            header("Location: index.php");
+            exit;
+        } else {
+            $error = "Contraseña de administrador incorrecta.";
         }
-
-        header("Location: index.php");
-        exit;
+    } elseif ($usuario === 'cajero') {
+        // Validación de Cajero
+        if ($password === 'cajero123') {
+            $_SESSION['usuario'] = 'Cajero';
+            $_SESSION['rol'] = 'cajero';
+            header("Location: index.php");
+            exit;
+        } else {
+            $error = "Contraseña de cajero incorrecta.";
+        }
+    } elseif ($usuario === 'cliente') {
+        // Validación de Cliente (Aquí validamos su Cédula y contraseña personal)
+        // Más adelante esto consultará la base de datos PostgreSQL. Por ahora simulamos:
+        if (!empty($cedula) && !empty($password)) {
+            $_SESSION['usuario'] = "Cliente Cédula: " . $cedula;
+            $_SESSION['rol'] = 'cliente';
+            $_SESSION['id_cliente'] = $cedula; // Guardamos su cédula exacta para aislar sus cuentas
+            header("Location: index.php");
+            exit;
+        } else {
+            $error = "Por favor ingresa tu cédula y tu contraseña.";
+        }
     } else {
-        $error = "Usuario o contraseña incorrectos.";
+        $error = "Por favor selecciona un rol válido.";
     }
 }
 ?>
@@ -40,12 +55,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
-            --color-0e1b48: #0E1B48; /* Azul Marino Principal */
-            --color-c18db4: #C18DB4; /* Rosa Oscuro / Acento */
-            --color-e2cad8: #E2CAD8; /* Rosa Claro / Fondo suave */
-            --color-87a7d0: #87A7D0; /* Azul Claro / Bordes */
-            --color-27425d: #27425D; /* Azul Pizarra / Hover */
-            --color-0e1f2f: #0E1F2F; /* Azul Noche / Textos */
+            --color-0e1b48: #0E1B48; 
+            --color-c18db4: #C18DB4; 
+            --color-e2cad8: #E2CAD8; 
+            --color-87a7d0: #87A7D0; 
+            --color-27425d: #27425D; 
+            --color-0e1f2f: #0E1F2F; 
         }
         body {
             background: linear-gradient(135deg, var(--color-e2cad8) 0%, var(--color-87a7d0) 100%);
@@ -58,9 +73,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             box-shadow: 0 15px 35px rgba(14, 27, 72, 0.15);
             background-color: #ffffff;
         }
-        .text-brand { 
-            color: var(--color-0e1b48); 
-        }
+        .text-brand { color: var(--color-0e1b48); }
         .form-label {
             color: var(--color-0e1f2f);
             font-weight: 600;
@@ -86,14 +99,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             padding: 12px 24px;
             border: none;
             font-weight: 600;
-            letter-spacing: 0.5px;
             transition: all 0.3s ease;
             box-shadow: 0 4px 10px rgba(14, 27, 72, 0.2);
         }
         .btn-custom:hover {
             background-color: var(--color-27425d);
             transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(39, 66, 93, 0.3);
             color: var(--color-e2cad8);
         }
         .badge-accent {
@@ -102,15 +113,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             font-weight: 500;
         }
     </style>
+    <!-- Script de JavaScript para mostrar el campo de cédula solo si eligen Cliente -->
+    <script>
+        function toggleCedula(select) {
+            var campoCedula = document.getElementById('campo-cedula');
+            if (select.value === 'cliente') {
+                campoCedula.style.display = 'block';
+                document.getElementById('cedula-input').required = true;
+            } else {
+                campoCedula.style.display = 'none';
+                document.getElementById('cedula-input').required = false;
+            }
+        }
+    </script>
 </head>
 <body class="d-flex align-items-center vh-100">
     <div class="container" style="max-width: 420px;">
         <div class="card card-custom p-2">
             <div class="card-body p-4">
-                <div class="text-center mb-3">
+                <div class="text-center mb-4">
                     <span class="badge badge-accent rounded-pill px-3 py-1 mb-2">Banca Segura</span>
                     <h3 class="fw-bold text-brand mb-1">Banco GO KYLIE GO</h3>
-                    <p class="text-muted small">Selecciona tu rol e ingresa tu contraseña</p>
+                    <p class="text-muted small">Acceso al sistema por perfil</p>
                 </div>
 
                 <?php if ($error): ?>
@@ -118,15 +142,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <?php endif; ?>
 
                 <form method="POST" action="login.php">
-                    <!-- Menú desplegable para los 3 usuarios -->
                     <div class="mb-3">
-                        <label class="form-label">Seleccionar Usuario / Rol</label>
-                        <select name="usuario" class="form-select form-control-custom" required>
-                            <option value="" disabled selected>-- Elige un rol --</option>
+                        <label class="form-label">Seleccionar Tipo de Usuario</label>
+                        <select name="usuario" id="usuario-select" class="form-select form-control-custom" onchange="toggleCedula(this)" required>
+                            <option value="" disabled selected>-- Elige una opción --</option>
                             <option value="administrador">Administrador</option>
                             <option value="cajero">Cajero</option>
                             <option value="cliente">Cliente</option>
                         </select>
+                    </div>
+
+                    <!-- Este campo de Cédula solo aparece si eligen "Cliente" gracias al JavaScript -->
+                    <div class="mb-3" id="campo-cedula" style="display: none;">
+                        <label class="form-label">Número de Cédula</label>
+                        <input type="text" name="cedula" id="cedula-input" class="form-control form-control-custom" placeholder="Ej: 1006123456">
                     </div>
 
                     <div class="mb-4">
