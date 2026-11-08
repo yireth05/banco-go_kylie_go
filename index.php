@@ -1,7 +1,6 @@
 <?php
 session_start();
 
-// Si no ha iniciado sesión, lo devolvemos al login
 if (!isset($_SESSION['rol'])) {
     header("Location: login.php");
     exit;
@@ -44,18 +43,16 @@ $usuario = $_SESSION['usuario'] ?? 'Usuario';
 </head>
 <body>
 
-    <!-- Navbar Superior -->
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom px-4 py-3">
         <div class="container-fluid">
             <a class="navbar-brand fw-bold" href="index.php">🏦 Banco GO KYLIE GO</a>
             <div class="ms-auto d-flex align-items-center gap-3">
-                <span class="text-light small">Hola, <strong><?php echo ucfirst($usuario); ?></strong> (Rol: <span class="badge bg-light text-dark"><?php echo ucfirst($rol); ?></span>)</span>
+                <span class="text-light small">Hola, <strong><?php echo htmlspecialchars($usuario); ?></strong> (Rol: <span class="badge bg-light text-dark"><?php echo ucfirst($rol); ?></span>)</span>
                 <a href="logout.php" class="btn btn-outline-light btn-sm rounded-pill px-3">Cerrar Sesión</a>
             </div>
         </div>
     </nav>
 
-    <!-- Contenido Dinámico según el Rol -->
     <div class="container py-5">
         <div class="row mb-4">
             <div class="col-12">
@@ -66,53 +63,53 @@ $usuario = $_SESSION['usuario'] ?? 'Usuario';
             </div>
         </div>
 
-        <!-- 1. VISTA EXCLUSIVA PARA ADMINISTRADOR -->
+        <!-- VISTA ADMINISTRADOR -->
         <?php if ($rol === 'administrador'): ?>
             <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">⚙️ Gestión Administrativa y Auditoría</h4>
             <div class="row g-4">
                 <div class="col-md-4">
-                    <div class="card card-menu p-4 bg-white h-100">
+                    <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Gestión de Usuarios</h5>
-                        <p class="text-muted small">Crear, editar, eliminar usuarios y control de accesos del sistema.</p>
-                        <a href="#" class="btn btn-sm btn-dark mt-auto rounded-pill">Administrar Usuarios</a>
+                        <p class="text-muted small">Control de roles y accesos del sistema definidos en PostgreSQL.</p>
+                        <a href="admin_usuarios.php" class="btn btn-sm btn-dark mt-auto rounded-pill">Administrar Usuarios</a>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card card-menu p-4 bg-white h-100">
+                    <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Configuraciones del Banco</h5>
                         <p class="text-muted small">Gestión de sucursales, ciudades, cajeros y tipos de cuenta.</p>
-                        <a href="#" class="btn btn-sm btn-dark mt-auto rounded-pill">Ver Configuraciones</a>
+                        <a href="admin_configuraciones.php" class="btn btn-sm btn-dark mt-auto rounded-pill">Ver Configuraciones</a>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card card-menu p-4 bg-white h-100">
+                    <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Auditoría y Bitácora</h5>
                         <p class="text-muted small">Revisión de la bitácora global de transacciones y seguridad.</p>
-                        <a href="#" class="btn btn-sm btn-dark mt-auto rounded-pill">Ver Auditoría</a>
+                        <a href="admin_bitacora.php" class="btn btn-sm btn-dark mt-auto rounded-pill">Ver Auditoría</a>
                     </div>
                 </div>
             </div>
 
-        <!-- 2. VISTA EXCLUSIVA PARA CAJERO -->
+        <!-- VISTA CAJERO -->
         <?php elseif ($rol === 'cajero'): ?>
             <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">💼 Ventanilla y Operaciones de Caja</h4>
             <div class="row g-4">
                 <div class="col-md-4">
-                    <div class="card card-menu p-4 bg-white h-100">
+                    <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Gestión de Clientes</h5>
                         <p class="text-muted small">Registrar nuevo cliente, actualizar datos y consultar perfiles.</p>
                         <a href="Crearcliente.php" class="btn btn-sm btn-primary mt-auto rounded-pill" style="background-color: var(--color-0e1b48);">Registrar Cliente</a>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card card-menu p-4 bg-white h-100">
+                    <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Cuentas y Préstamos</h5>
                         <p class="text-muted small">Abrir nueva cuenta, modificar cuentas y registrar préstamos.</p>
                         <a href="crear_cuenta.php" class="btn btn-sm btn-primary mt-auto rounded-pill" style="background-color: var(--color-0e1b48);">Gestionar Cuentas</a>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card card-menu p-4 bg-white h-100">
+                    <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Transacciones</h5>
                         <p class="text-muted small">Realizar transacciones en ventanilla y leer bitácoras de operaciones.</p>
                         <a href="Crear-RealizarTransacciones.php" class="btn btn-sm btn-primary mt-auto rounded-pill" style="background-color: var(--color-0e1b48);">Hacer Transacción</a>
@@ -120,26 +117,26 @@ $usuario = $_SESSION['usuario'] ?? 'Usuario';
                 </div>
             </div>
 
-        <!-- 3. VISTA EXCLUSIVA PARA CLIENTE -->
+        <!-- VISTA CLIENTE -->
         <?php elseif ($rol === 'cliente'): ?>
             <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">👤 Mi Portal Bancario</h4>
             <div class="row g-4">
                 <div class="col-md-4">
-                    <div class="card card-menu p-4 bg-white h-100">
+                    <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Mis Datos Personales</h5>
-                        <p class="text-muted small">Ver y actualizar tu información personal de contacto.</p>
-                        <a href="#" class="btn btn-sm btn-outline-dark mt-auto rounded-pill">Ver mis datos</a>
+                        <p class="text-muted small">Ver tu información personal registrada en el banco.</p>
+                        <a href="cliente_datos.php" class="btn btn-sm btn-outline-dark mt-auto rounded-pill">Ver mis datos</a>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card card-menu p-4 bg-white h-100">
+                    <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Mis Cuentas y Saldos</h5>
                         <p class="text-muted small">Consulta el saldo actual de tus cuentas y estado de productos.</p>
                         <a href="estado_cuentas.php" class="btn btn-sm btn-outline-dark mt-auto rounded-pill">Ver mis cuentas</a>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card card-menu p-4 bg-white h-100">
+                    <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Transferencias</h5>
                         <p class="text-muted small">Realiza transferencias y revisa tu historial personal de movimientos.</p>
                         <a href="Crear-RealizarTransacciones.php" class="btn btn-sm btn-outline-dark mt-auto rounded-pill">Transferir Fondos</a>
