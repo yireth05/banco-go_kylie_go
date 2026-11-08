@@ -6,10 +6,10 @@ require_once "conexionDB.php";
 $mensaje = "";
 
 try {
-    // 1. Cargar TODAS las cuentas asociadas a sus clientes en un arreglo para que JavaScript las filtre al instante
+    // 1. Cargar TODAS las cuentas asociadas a sus clientes para filtrarlas por ID en JavaScript
     $cuentas = $conexion->query("SELECT num_cuenta, id_cliente, saldo FROM cuentas ORDER BY num_cuenta")->fetchAll(PDO::FETCH_ASSOC);
 
-    // 2. Cargar Tipos de Transacción y Formas de Pago desde las tablas maestras
+    // 2. Cargar Tipos de Transacción y Formas de Pago desde las tablas maestras de PostgreSQL
     $tipos_transaccion = $conexion->query("SELECT cod_tipo_transaccion, nomb_tipo_transaccion FROM tipo_transacciones ORDER BY cod_tipo_transaccion")->fetchAll(PDO::FETCH_ASSOC);
     $formas_pago = $conexion->query("SELECT cod_forma_pago, nomb_forma_pago FROM forma_pagos ORDER BY cod_forma_pago")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -18,13 +18,17 @@ try {
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $id_cliente       = $_POST["id_cliente"];
-    $num_cuenta       = $_POST["num_cuenta"];
-    $cod_tipo         = $_POST["cod_tipo"];       
-    $cod_forma        = $_POST["cod_forma"];      
-    $monto            = $_POST["monto"];
-    $id_banca_virtual = !empty($_POST["id_banca_virtual"]) ? $_POST["id_banca_virtual"] : null;
-    $id_cajero        = !empty($_POST["id_cajero"]) ? $_POST["id_cajero"] : null;
+    $id_cliente = $_POST["id_cliente"];
+    $num_cuenta = $_POST["num_cuenta"];
+    $cod_tipo   = $_POST["cod_tipo"];       
+    $cod_forma  = $_POST["cod_forma"];      
+    $monto      = $_POST["monto"];
+    
+    // El cajero físico opera en ventanilla, por lo que la banca virtual siempre es NULL
+    $id_banca_virtual = null; 
+    
+    // Puedes capturar el ID del cajero desde la sesión si lo tienes guardado, o dejarlo opcional/nulo
+    $id_cajero = !empty($_POST["id_cajero"]) ? $_POST["id_cajero"] : null;
 
     try {
         $sql = "SELECT realizar_transaccion(:cliente, :cuenta, :tipo, :forma, :monto, :cajero, :banca)";
@@ -74,10 +78,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         
                         <form action="" method="POST" id="formTransaccion">
                             
-                            <!-- 1. Escribir el ID del Cliente -->
+                            <!-- 1. Escribir el ID del Cliente para buscar sus cuentas -->
                             <div class="mb-3">
                                 <label class="form-label fw-bold">ID / Cédula del Cliente <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="input_id_cliente" name="id_cliente" placeholder="Escriba el ID del cliente y pulse fuera o tabule" required onkeyup="buscarCuentasPorId(this.value)" onchange="buscarCuentasPorId(this.value)">
+                                <input type="text" class="form-control" id="input_id_cliente" name="id_cliente" placeholder="Escriba el ID del cliente" required onkeyup="buscarCuentasPorId(this.value)" onchange="buscarCuentasPorId(this.value)">
                                 <div id="mensaje_cliente" class="form-text">Escriba el ID del cliente para cargar sus cuentas automáticamente.</div>
                             </div>
 
@@ -90,6 +94,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             </div>
                             
                             <div class="row">
+                                <!-- 3. Tipo de Transacción -->
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label fw-bold">Tipo de Transacción <span class="text-danger">*</span></label>
                                     <select class="form-select" name="cod_tipo" required>
@@ -101,33 +106,38 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
+
+                                <!-- 4. Forma de Transacción / Pago -->
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label fw-bold">Forma de Transacción <span class="text-danger">*</span></label>
                                     <select class="form-select" name="cod_forma" required>
                                         <option value="" selected disabled>Seleccione...</option>
-                                        <?php foreach ($formas_pago as $forma): ?>
-                                            <option value="<?php echo $forma['cod_forma_pago']; ?>">
-                                                <?php echo $forma['cod_forma_pago'] . " - " . $forma['nomb_forma_pago']; ?>
-                                            </option>
-                                        <?php endforeach; ?>
+                                        <?php if (!empty($formas_pago)): ?>
+                                            <?php foreach ($formas_pago as $forma): ?>
+                                                <option value="<?php echo $forma['cod_forma_pago']; ?>">
+                                                    <?php echo $forma['cod_forma_pago'] . " - " . $forma['nomb_forma_pago']; ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <!-- Respaldo por defecto si la tabla SQL está vacía -->
+                                            <option value="1">1 - Efectivo</option>
+                                            <option value="2">2 - Cheque</option>
+                                            <option value="3">3 - Transferencia</option>
+                                        <?php endif; ?>
                                     </select>
                                 </div>
                             </div>
 
+                            <!-- 5. Monto -->
                             <div class="mb-3">
                                 <label class="form-label fw-bold">Monto ($) <span class="text-danger">*</span></label>
                                 <input type="number" step="0.01" min="0.01" class="form-control" name="monto" placeholder="0.00" required>
                             </div>
 
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label text-muted">ID Cajero (Físico)</label>
-                                    <input type="number" class="form-control" name="id_cajero" placeholder="Opcional">
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label text-muted">ID Banca Virtual</label>
-                                    <input type="number" class="form-control" name="id_banca_virtual" placeholder="Opcional">
-                                </div>
+                            <!-- 6. ID Cajero Físico (Opcional) -->
+                            <div class="mb-3">
+                                <label class="form-label text-muted">ID Cajero Físico (Terminal de Sucursal)</label>
+                                <input type="number" class="form-control" name="id_cajero" placeholder="Opcional">
                             </div>
 
                             <div class="d-grid mt-4">
@@ -140,7 +150,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </div>
     </div>
 
-    <!-- Script JavaScript para buscar cuentas al teclear el ID del cliente -->
+    <!-- Script JavaScript para filtrar cuentas al teclear el ID -->
     <script>
         var todasLasCuentas = <?php echo json_encode($cuentas); ?>;
 
@@ -152,7 +162,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             selectCuenta.innerHTML = '<option value="" selected disabled>-- Seleccione una cuenta --</option>';
             
             if (clienteId.length > 0) {
-                // Filtrar las cuentas que coincidan con el ID digitado
                 var cuentasFiltradas = todasLasCuentas.filter(function(cuenta) {
                     return cuenta.id_cliente.toString().toLowerCase() === clienteId.toLowerCase();
                 });
