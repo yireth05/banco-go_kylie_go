@@ -26,7 +26,7 @@ if (isset($_GET['id'])) {
         $stmt_detalle->execute([$id_suc]);
         $sucursal_seleccionada = $stmt_detalle->fetch(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
-        // Manejo de error silencioso o log
+        // Manejo de error silencioso
     }
 }
 ?>
@@ -120,7 +120,8 @@ if (isset($_GET['id'])) {
                                     <td><i class="bi bi-geo-alt-fill text-danger me-1"></i> <?php echo htmlspecialchars($suc['direccion_sucursal'] ?? 'Centro Principal'); ?></td>
                                     <td><i class="bi bi-telephone-fill text-success me-1"></i> <?php echo htmlspecialchars($suc['telefono_sucursal'] ?? '(608) 6700000'); ?></td>
                                     <td class="text-center">
-                                        <a href="sucursales.php?id=<?php echo $suc['id_sucursal']; ?>" class="btn btn-sm btn-custom px-3">
+                                        <!-- Añadimos un ancla #detalle-sucursal para que la página baje sola -->
+                                        <a href="sucursales.php?id=<?php echo $suc['id_sucursal']; ?>#detalle-sucursal" class="btn btn-sm btn-custom px-3">
                                             <i class="bi bi-info-circle me-1"></i> Más Info
                                         </a>
                                     </td>
@@ -138,7 +139,7 @@ if (isset($_GET['id'])) {
 
         <!-- SECCIÓN DINÁMICA: DETALLE Y CONTACTO DE LA SUCURSAL SELECCIONADA -->
         <?php if ($sucursal_seleccionada): ?>
-            <div class="card card-custom p-4 bg-white border-top border-4 border-primary mb-5 animate__animated animate__fadeIn">
+            <div id="detalle-sucursal" class="card card-custom p-4 bg-white border-top border-4 border-primary mb-5">
                 <div class="row align-items-center">
                     <div class="col-md-8">
                         <span class="badge bg-primary mb-2">Sucursal Seleccionada</span>
@@ -147,8 +148,8 @@ if (isset($_GET['id'])) {
                         <p class="text-muted mb-0"><i class="bi bi-clock me-1"></i> <strong>Horario de Atención:</strong> Lunes a Viernes 8:00 a.m. - 4:00 p.m.</p>
                     </div>
                     <div class="col-md-4 text-md-end mt-3 mt-md-0">
-                        <!-- Botón Contactarse que despliega la info -->
-                        <button class="btn btn-success btn-lg rounded-pill shadow-sm px-4" data-bs-toggle="modal" data-bs-target="#modalContacto">
+                        <!-- Botón Contactarse que despliega el modal -->
+                        <button type="button" class="btn btn-success btn-lg rounded-pill shadow-sm px-4" data-bs-toggle="modal" data-bs-target="#modalContacto">
                             <i class="bi bi-headset me-2"></i> Contactarse
                         </button>
                     </div>
@@ -156,12 +157,12 @@ if (isset($_GET['id'])) {
             </div>
 
             <!-- Modal de Contacto y Cajeros de la Sucursal -->
-            <div class="modal fade" id="modalContacto" tabindex="-1">
+            <div class="modal fade" id="modalContacto" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content border-0 rounded-4 shadow">
                         <div class="modal-header bg-dark text-white rounded-top-4">
                             <h5 class="modal-title"><i class="bi bi-telephone-forward me-2"></i>Canales de Atención y Soporte</h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body p-4">
                             <h6 class="fw-bold text-primary">Oficina: <?php echo htmlspecialchars($sucursal_seleccionada['nombre_sucursal']); ?></h6>
@@ -197,6 +198,7 @@ if (isset($_GET['id'])) {
 
     </div>
 
+    <!-- Bootstrap JS (Esencial para que funcionen los modales) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
