@@ -10,11 +10,11 @@ if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'administrador') {
 }
 
 try {
-    // 1. Obtener Ciudades
-    $ciudades = $pdo->query("SELECT * FROM ciudades ORDER BY id_ciudad")->fetchAll(PDO::FETCH_ASSOC);
+    // 1. Obtener Ciudades (usando $conexion en lugar de $pdo)
+    $ciudades = $conexion->query("SELECT * FROM ciudades ORDER BY id_ciudad")->fetchAll(PDO::FETCH_ASSOC);
 
     // 2. Obtener Sucursales con sus respectivas ciudades mediante JOIN
-    $sucursales = $pdo->query("
+    $sucursales = $conexion->query("
         SELECT s.id_sucursal, s.nomb_sucursal, s.direccion_sucursal, c.nomb_ciudad 
         FROM sucursales s
         JOIN ciudades c ON s.id_ciudad = c.id_ciudad
@@ -22,7 +22,7 @@ try {
     ")->fetchAll(PDO::FETCH_ASSOC);
 
     // 3. Obtener Cajeros con sus sucursales
-    $cajeros = $pdo->query("
+    $cajeros = $conexion->query("
         SELECT caj.id_cajero, caj.ubicacion, caj.estado, suc.nomb_sucursal 
         FROM cajeros caj
         JOIN sucursales suc ON caj.id_sucursal = suc.id_sucursal
@@ -30,7 +30,7 @@ try {
     ")->fetchAll(PDO::FETCH_ASSOC);
 
     // 4. Obtener Tipos de Cuentas
-    $tipo_cuentas = $pdo->query("SELECT * FROM tipo_cuentas ORDER BY cod_tipo_cuenta")->fetchAll(PDO::FETCH_ASSOC);
+    $tipo_cuentas = $conexion->query("SELECT * FROM tipo_cuentas ORDER BY cod_tipo_cuenta")->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
     $error = "Error al consultar las configuraciones: " . $e->getMessage();
@@ -82,14 +82,18 @@ try {
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($sucursales as $suc): ?>
-                                    <tr>
-                                        <td><?php echo $suc['id_sucursal']; ?></td>
-                                        <td><strong><?php echo htmlspecialchars($suc['nomb_sucursal']); ?></strong></td>
-                                        <td><?php echo htmlspecialchars($suc['direccion_sucursal']); ?></td>
-                                        <td><?php echo htmlspecialchars($suc['nomb_ciudad']); ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
+                                <?php if (!empty($sucursales)): ?>
+                                    <?php foreach ($sucursales as $suc): ?>
+                                        <tr>
+                                            <td><?php echo $suc['id_sucursal']; ?></td>
+                                            <td><strong><?php echo htmlspecialchars($suc['nomb_sucursal']); ?></strong></td>
+                                            <td><?php echo htmlspecialchars($suc['direccion_sucursal']); ?></td>
+                                            <td><?php echo htmlspecialchars($suc['nomb_ciudad']); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr><td colspan="4" class="text-center text-muted py-3">No hay sucursales.</td></tr>
+                                <?php endif; ?>
                             </tbody>
                         </table>
                     </div>
@@ -111,18 +115,22 @@ try {
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($cajeros as $caj): ?>
-                                    <tr>
-                                        <td><?php echo $caj['id_cajero']; ?></td>
-                                        <td><?php echo htmlspecialchars($caj['ubicacion']); ?></td>
-                                        <td><?php echo htmlspecialchars($caj['nomb_sucursal']); ?></td>
-                                        <td>
-                                            <span class="badge bg-<?php echo ($caj['estado'] === 'Activo') ? 'success' : (($caj['estado'] === 'En mantenimiento') ? 'warning text-dark' : 'danger'); ?>">
-                                                <?php echo $caj['estado']; ?>
-                                            </span>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
+                                <?php if (!empty($cajeros)): ?>
+                                    <?php foreach ($cajeros as $caj): ?>
+                                        <tr>
+                                            <td><?php echo $caj['id_cajero']; ?></td>
+                                            <td><?php echo htmlspecialchars($caj['ubicacion']); ?></td>
+                                            <td><?php echo htmlspecialchars($caj['nomb_sucursal']); ?></td>
+                                            <td>
+                                                <span class="badge bg-<?php echo ($caj['estado'] === 'Activo') ? 'success' : (($caj['estado'] === 'En mantenimiento') ? 'warning text-dark' : 'danger'); ?>">
+                                                    <?php echo $caj['estado']; ?>
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr><td colspan="4" class="text-center text-muted py-3">No hay cajeros.</td></tr>
+                                <?php endif; ?>
                             </tbody>
                         </table>
                     </div>
@@ -142,12 +150,16 @@ try {
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($tipo_cuentas as $tc): ?>
-                                    <tr>
-                                        <td><?php echo $tc['cod_tipo_cuenta']; ?></td>
-                                        <td><strong><?php echo htmlspecialchars($tc['nomb_tipo_cuenta']); ?></strong></td>
-                                    </tr>
-                                <?php endforeach; ?>
+                                <?php if (!empty($tipo_cuentas)): ?>
+                                    <?php foreach ($tipo_cuentas as $tc): ?>
+                                        <tr>
+                                            <td><?php echo $tc['cod_tipo_cuenta']; ?></td>
+                                            <td><strong><?php echo htmlspecialchars($tc['nomb_tipo_cuenta']); ?></strong></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr><td colspan="2" class="text-center text-muted py-3">No hay tipos de cuenta.</td></tr>
+                                <?php endif; ?>
                             </tbody>
                         </table>
                     </div>
@@ -167,12 +179,16 @@ try {
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($ciudades as $ciu): ?>
-                                    <tr>
-                                        <td><?php echo $ciu['id_ciudad']; ?></td>
-                                        <td><?php echo htmlspecialchars($ciu['nomb_ciudad']); ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
+                                <?php if (!empty($ciudades)): ?>
+                                    <?php foreach ($ciudades as $ciu): ?>
+                                        <tr>
+                                            <td><?php echo $ciu['id_ciudad']; ?></td>
+                                            <td><?php echo htmlspecialchars($ciu['nomb_ciudad']); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr><td colspan="2" class="text-center text-muted py-3">No hay ciudades.</td></tr>
+                                <?php endif; ?>
                             </tbody>
                         </table>
                     </div>
