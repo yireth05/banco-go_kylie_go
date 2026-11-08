@@ -1,5 +1,6 @@
 <?php
 // gestion_prestamos.php
+session_start();
 include_once "conexionDB.php";
 
 $mensaje = "";
@@ -27,18 +28,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             ':cuotas' => $cuotas_aprobadas,
             ':id_cli' => $id_cliente
         ]);
-        $mensaje = "<div class='alert alert-success alert-dismissible fade show' role='alert'>
-                        <strong>Confirmacion:</strong> El prestamo numero <strong>{$id_prestamo}</strong> ha sido registrado exitosamente.
+        $mensaje = "<div class='alert alert-success alert-dismissible fade show rounded-4 border-0 shadow-sm' role='alert'>
+                        <strong>Confirmación:</strong> El préstamo número <strong>{$id_prestamo}</strong> ha sido registrado exitosamente.
                         <button type='button' class='btn-close' data-bs-dismiss='alert'></button>
                     </div>";
     } catch (PDOException $e) {
         $error_msg = $e->getMessage();
         if ($e->getCode() === '23505') {
-            $error_user = "El identificador de prestamo ingresado ya existe en el sistema.";
+            $error_user = "El identificador de préstamo ingresado ya existe en el sistema.";
         } else {
             $error_user = $error_msg;
         }
-        $mensaje = "<div class='alert alert-danger alert-dismissible fade show' role='alert'>
+        $mensaje = "<div class='alert alert-danger alert-dismissible fade show rounded-4 border-0 shadow-sm' role='alert'>
                         <strong>Error de registro:</strong> {$error_user}
                         <button type='button' class='btn-close' data-bs-dismiss='alert'></button>
                     </div>";
@@ -66,29 +67,93 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestion de Prestamos - Banco Villavicencio</title>
+    <title>Gestión de Préstamos - Banco Villavicencio</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --color-0e1b48: #0E1B48;
+            --color-c18db4: #C18DB4;
+            --color-e2cad8: #E2CAD8;
+            --color-87a7d0: #87A7D0;
+            --color-27425d: #27425D;
+            --color-0e1f2f: #0E1F2F;
+        }
+        body {
+            background: linear-gradient(135deg, #f8f9fa 0%, var(--color-e2cad8) 100%);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+        .card-custom {
+            border-radius: 16px;
+            border: none;
+            box-shadow: 0 8px 24px rgba(14, 27, 72, 0.08);
+        }
+        .card-header-brand {
+            background-color: var(--color-0e1b48) !important;
+            color: #ffffff !important;
+            border-radius: 16px 16px 0 0 !important;
+        }
+        .table-dark {
+            background-color: var(--color-0e1b48);
+        }
+        .table-dark th {
+            background-color: var(--color-0e1b48);
+            color: #ffffff;
+            border-color: var(--color-27425d);
+        }
+        .btn-custom {
+            background-color: var(--color-0e1b48);
+            color: #ffffff;
+            border-radius: 50rem;
+            border: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-custom:hover {
+            background-color: var(--color-27425d);
+            color: #ffffff;
+        }
+        .btn-back {
+            background-color: var(--color-c18db4);
+            color: #ffffff;
+            border-radius: 50rem;
+            border: none;
+            font-weight: 600;
+        }
+        .btn-back:hover {
+            background-color: var(--color-87a7d0);
+            color: var(--color-0e1b48);
+        }
+    </style>
 </head>
-<body class="bg-light">
+<body>
 
     <!-- Incluir barra de navegación si existe -->
     <?php if (file_exists("navbar.php")) include_once "navbar.php"; ?>
 
     <div class="container mt-4 mb-5">
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold" style="color: var(--color-0e1b48);">Gestión de Préstamos</h2>
+                <p class="text-muted mb-0">Solicitud, aprobación y cartera general de créditos del banco.</p>
+            </div>
+            <a href="index.php" class="btn btn-back px-4 py-2">← Volver al Panel</a>
+        </div>
         
         <?php echo $mensaje; ?>
 
         <div class="row">
             <!-- Formulario de Registro de Préstamo -->
             <div class="col-md-4 mb-4">
-                <div class="card shadow-sm border-0">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0 fs-6 fw-semibold">Solicitud y Aprobacion de Prestamos</h5>
+                <div class="card card-custom bg-white">
+                    <div class="card-header card-header-brand p-3">
+                        <h5 class="mb-0 fs-6 fw-semibold">Solicitud y Aprobación de Préstamos</h5>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-4">
                         <form action="" method="POST">
                             <div class="mb-3">
-                                <label class="form-label fw-medium">Codigo de Prestamo (*)</label>
+                                <label class="form-label fw-medium">Código de Préstamo (*)</label>
                                 <input type="text" class="form-control" name="id_prestamo" placeholder="Ej: PR-004" required>
                             </div>
 
@@ -110,7 +175,7 @@ try {
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-medium">Tasa de Interes Mensual (%) (*)</label>
+                                <label class="form-label fw-medium">Tasa de Interés Mensual (%) (*)</label>
                                 <input type="number" step="0.01" min="0" class="form-control" name="tasa_interes" placeholder="1.80" required>
                             </div>
 
@@ -119,7 +184,7 @@ try {
                                 <input type="number" min="1" class="form-control" name="cuotas_aprobadas" placeholder="12" required>
                             </div>
 
-                            <button type="submit" class="btn btn-success w-100 py-2 font-weight-bold">Registrar Prestamo</button>
+                            <button type="submit" class="btn btn-custom w-100 py-2 font-weight-bold">Registrar Préstamo</button>
                         </form>
                     </div>
                 </div>
@@ -127,45 +192,41 @@ try {
 
             <!-- Tabla de Préstamos Registrados -->
             <div class="col-md-8">
-                <div class="card shadow-sm border-0">
-                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0 fs-6 fw-semibold">Cartera de Prestamos Vigentes</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover align-middle mb-0">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th>Codigo</th>
-                                        <th>Cliente</th>
-                                        <th>Monto</th>
-                                        <th>Saldo Pendiente</th>
-                                        <th>Tasa</th>
-                                        <th>Cuotas</th>
-                                        <th>Aprobacion</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php if (count($prestamos) > 0): ?>
-                                        <?php foreach ($prestamos as $p): ?>
-                                            <tr>
-                                                <td><strong><?php echo htmlspecialchars($p['id_prestamo']); ?></strong></td>
-                                                <td><?php echo htmlspecialchars($p['nomb_cli'] . ' ' . $p['apelli_cli']); ?></td>
-                                                <td class="fw-bold text-primary">$<?php echo number_format($p['monto_aprobado'], 2); ?></td>
-                                                <td class="fw-bold text-danger">$<?php echo number_format($p['saldo_pendiente'], 2); ?></td>
-                                                <td><span class="badge bg-secondary"><?php echo $p['tasa_interes']; ?>%</span></td>
-                                                <td><?php echo $p['cuotas_aprobadas']; ?> mes(es)</td>
-                                                <td><small class="text-muted"><?php echo $p['fecha_aprobacion']; ?></small></td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    <?php else: ?>
+                <div class="card card-custom p-4 bg-white">
+                    <h5 class="mb-3 fw-bold" style="color: var(--color-0e1b48);">Cartera de Préstamos Vigentes</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Cliente</th>
+                                    <th>Monto</th>
+                                    <th>Saldo Pendiente</th>
+                                    <th>Tasa</th>
+                                    <th>Cuotas</th>
+                                    <th>Aprobación</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (count($prestamos) > 0): ?>
+                                    <?php foreach ($prestamos as $p): ?>
                                         <tr>
-                                            <td colspan="7" class="text-center text-muted py-4">No se encontraron registros de prestamos en el sistema.</td>
+                                            <td><strong><?php echo htmlspecialchars($p['id_prestamo']); ?></strong></td>
+                                            <td><?php echo htmlspecialchars($p['nomb_cli'] . ' ' . $p['apelli_cli']); ?></td>
+                                            <td class="fw-bold text-success">$<?php echo number_format($p['monto_aprobado'], 2); ?></td>
+                                            <td class="fw-bold text-danger">$<?php echo number_format($p['saldo_pendiente'], 2); ?></td>
+                                            <td><span class="badge bg-secondary"><?php echo $p['tasa_interes']; ?>%</span></td>
+                                            <td><?php echo $p['cuotas_aprobadas']; ?> mes(es)</td>
+                                            <td><small class="text-muted"><?php echo $p['fecha_aprobacion']; ?></small></td>
                                         </tr>
-                                    <?php endif; ?>
-                                </tbody>
-                            </table>
-                        </div>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-4">No se encontraron registros de préstamos en el sistema.</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
