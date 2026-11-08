@@ -9,14 +9,6 @@ if (!isset($_SESSION['rol'])) {
 
 $mensaje = "";
 
-try {
-    $cuentas = $conexion->query("SELECT num_cuenta, id_cliente, saldo FROM cuentas ORDER BY num_cuenta")->fetchAll(PDO::FETCH_ASSOC);
-    $tipos_transaccion = $conexion->query("SELECT cod_tipo_transaccion, nomb_tipo_transaccion FROM tipo_transacciones ORDER BY cod_tipo_transaccion")->fetchAll(PDO::FETCH_ASSOC);
-    $formas_transaccion = $conexion->query("SELECT cod_forma_transaccion, nomb_forma_transaccion FROM formas_transacciones ORDER BY cod_forma_transaccion")->fetchAll(PDO::FETCH_ASSOC);
-} catch (Exception $e) {
-    $mensaje = "<div class='alert alert-warning'>Aviso al cargar datos: " . htmlspecialchars($e->getMessage()) . "</div>";
-}
-
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $id_cliente = trim($_POST["id_cliente"] ?? '');
     $num_cuenta = trim($_POST["num_cuenta"] ?? '');
@@ -44,7 +36,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             ':banca'   => $id_banca_virtual
         ]);
         
-        $mensaje = "<div class='alert alert-success alert-dismissible fade show shadow-sm rounded-3' role='alert'><strong>¡Transacción realizada con éxito!</strong> El movimiento se registró y auditó correctamente.<button type='button' class='btn-close' data-bs-dismiss='alert'></button></div>";
+        $mensaje = "<div class='alert alert-success alert-dismissible fade show shadow-sm rounded-3' role='alert'><strong>¡Transacción realizada con éxito!</strong> El saldo se ha actualizado en tiempo real.<button type='button' class='btn-close' data-bs-dismiss='alert'></button></div>";
     } catch (Exception $e) {
         $errorCompleto = $e->getMessage();
         if (preg_match('/ERROR:\s*(.*?)(?=\nCONTEXT:|$)/s', $errorCompleto, $coincidencias)) {
@@ -54,6 +46,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
         $mensaje = "<div class='alert alert-danger alert-dismissible fade show shadow-sm rounded-3' role='alert'><strong>Error en la Transacción:</strong> " . htmlspecialchars($mensajeAmigable) . "<button type='button' class='btn-close' data-bs-dismiss='alert'></button></div>";
     }
+}
+
+// Carga de datos actualizada (se ejecuta siempre para obtener los saldos frescos)
+try {
+    $cuentas = $conexion->query("SELECT num_cuenta, id_cliente, saldo FROM cuentas ORDER BY num_cuenta")->fetchAll(PDO::FETCH_ASSOC);
+    $tipos_transaccion = $conexion->query("SELECT cod_tipo_transaccion, nomb_tipo_transaccion FROM tipo_transacciones ORDER BY cod_tipo_transaccion")->fetchAll(PDO::FETCH_ASSOC);
+    $formas_transaccion = $conexion->query("SELECT cod_forma_transaccion, nomb_forma_transaccion FROM formas_transacciones ORDER BY cod_forma_transaccion")->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $mensaje = "<div class='alert alert-warning'>Aviso al cargar datos: " . htmlspecialchars($e->getMessage()) . "</div>";
 }
 ?>
 <!DOCTYPE html>
