@@ -6,6 +6,7 @@ $dbname   = "banco_go_kylie_go";
 $user     = "postgres";
 $password = "admin123";
 
+
 try {
     $conexion = new PDO("pgsql:host=$host;port=$port;dbname=$dbname", $user, $password);
     $conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -13,3 +14,40 @@ try {
     die("Error en la conexion a la base de datos: " . $e->getMessage());
 }
 ?>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
