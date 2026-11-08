@@ -1,5 +1,4 @@
 <?php
-// index.php
 session_start();
 if (!isset($_SESSION['usuario_id'])) {
     header("Location: login.php");
@@ -148,7 +147,23 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Transferencias y Movimientos</h5>
                         <p class="text-muted small">Realizar transferencias y revisar el historial de transacciones.</p>
-                        <a href="Crear-RealizarTransacciones.php" class="btn btn-sm btn-custom mt-auto w-100">Transferir / Ver Historial</a>
+                        
+                        <!-- Botón principal que despliega las opciones -->
+                        <div class="mt-auto">
+                            <button class="btn btn-sm btn-custom w-100" type="button" onclick="toggleMenuTransacciones()">
+                                Transferir / Ver Historial
+                            </button>
+                            
+                            <!-- Submenú desplegable con los dos nuevos botones -->
+                            <div id="submenuTransacciones" class="mt-2 d-none flex-column gap-2">
+                                <a href="Crear-RealizarTransacciones.php" class="btn btn-sm btn-outline-dark w-100">
+                                    Hacer transferencia
+                                </a>
+                                <a href="estado_cuentas.php" class="btn btn-sm btn-outline-dark w-100">
+                                    Ver su historial
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="col-md-4">
