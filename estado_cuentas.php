@@ -8,7 +8,8 @@ if($busqueda !== ''){
         JOIN clientes cli ON cli.id_cliente=c.id_cliente
         WHERE c.id_cliente LIKE ? OR c.num_cuenta LIKE ?";
 $stmt = $conexion->prepare($sql);  
-$stmt->execute([$numero_buscado]);
+$param_busqueda = "%" . $busqueda . "%";
+$stmt->execute([$param_busqueda, $param_busqueda]);
 $cuentas=$stmt->fetchAll(PDO::FETCH_ASSOC);
 }else{
   $sql="SELECT c.*, cli.nomb_cli, cli.apelli_cli FROM cuentas c
