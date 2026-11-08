@@ -1,36 +1,48 @@
 <?php
-// eliminar_cliente.php
+// eliminar_cliente.php (Ejemplo de lógica de validación previa al DELETE)
 session_start();
-require_once "conexionDB.php";
+require_once 'conexionDB.php';
 
-header('Content-Type: application/json');
-
-if (!isset($_SESSION['rol']) || !in_array($_SESSION['rol'], ['administrador', 'cajero'])) {
-    echo json_encode(['success' => false, 'message' => 'No autorizado']);
+// Verificar que sea Administrador (por seguridad RBAC)
+if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'administrador') {
+    header("Location: index.php");
     exit;
 }
 
-if (isset($_GET['id'])) {
-    $id_cliente = $_GET['id'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['id'])) {
+    $id_cliente = $_GET['id'] ?? $_POST['id_cliente'] ?? null;
 
-    try {
-        $stmt = $conexion->prepare("DELETE FROM clientes WHERE id_cliente = :id");
-        $stmt->bindParam(':id', $id_cliente, PDO::PARAM_STR);
-        $stmt->execute();
+    if ($id_cliente) {
+        try {
+            // 1. Verificar si el cliente tiene cuentas asociadas
+            $stmt_cuentas = $conexion->prepare("SELECT COUNT(*) FROM cuentas WHERE id_cliente = ?");
+            $stmt_cuentas->execute([$id_cliente]);
+            $total_cuentas = $stmt_cuentas->fetchColumn();
 
-        echo json_encode(['success' => true, 'message' => 'Cliente eliminado correctamente']);
-        exit;
+            // 2. Verificar si el cliente tiene préstamos asociados
+            $stmt_prestamos = $conexion->prepare("SELECT COUNT(*) FROM prestamos WHERE id_cliente = ?");
+            $stmt_prestamos->execute([$id_cliente]);
+            $total_prestamos = $stmt_prestamos->fetchColumn();
 
-    } catch (PDOException $e) {
-        // Error por restricciones de llaves foráneas (cuentas, préstamos activos)
-        echo json_encode([
-            'success' => false, 
-            'message' => 'No se puede eliminar este cliente porque tiene cuentas, préstamos o transacciones asociadas en el sistema.'
-        ]);
-        exit;
+            // 3. Si tiene cuentas o préstamos, BLOQUEAR la eliminación
+            if ($total_cuentas > 0 || $total_prestamos > 0) {
+                $mensaje_error = "No se puede eliminar al cliente #{$id_cliente} porque posee cuentas activas ({$total_cuentas}) y/o préstamos registrados ({$total_prestamos}). Debe cancelar sus productos primero.";
+                // Redirigir con mensaje de error (puedes usar sesiones flash o parámetros GET)
+                header("Location: Crearcliente.php?error=" . urlencode($mensaje_error));
+                exit;
+            }
+
+            // 4. Si pasa la validación, procedemos a borrar de forma segura
+            $stmt_delete = $conexion->prepare("DELETE FROM clientes WHERE id_cliente = ?");
+            $stmt_delete->execute([$id_cliente]);
+
+            header("Location: Crearcliente.php?exito=" . urlencode("Cliente eliminado correctamente."));
+            exit;
+
+        } catch (PDOException $e) {
+            $mensaje_error = "Error en la base de datos al intentar eliminar: " . $e->getMessage();
+            header("Location: Crearcliente.php?error=" . urlencode($mensaje_error));
+            exit;
+        }
     }
-} else {
-    echo json_encode(['success' => false, 'message' => 'ID de cliente no proporcionado']);
-    exit;
 }
-?>
