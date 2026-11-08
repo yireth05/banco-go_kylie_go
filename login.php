@@ -1,6 +1,7 @@
 <?php
 // login.php
 session_start();
+require_once 'conexion.php';
 
 $error = "";
 
@@ -10,7 +11,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $cedula   = trim($_POST['cedula'] ?? '');
 
     if ($usuario === 'administrador') {
-        // Validación de Administrador
+        // Credenciales fijas del Administrador
         if ($password === 'admin123') {
             $_SESSION['usuario'] = 'Administrador';
             $_SESSION['rol'] = 'administrador';
@@ -20,7 +21,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $error = "Contraseña de administrador incorrecta.";
         }
     } elseif ($usuario === 'cajero') {
-        // Validación de Cajero
+        // Credenciales fijas del Cajero
         if ($password === 'cajero123') {
             $_SESSION['usuario'] = 'Cajero';
             $_SESSION['rol'] = 'cajero';
@@ -30,14 +31,33 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $error = "Contraseña de cajero incorrecta.";
         }
     } elseif ($usuario === 'cliente') {
-        // Validación de Cliente (Aquí validamos su Cédula y contraseña personal)
-        // Más adelante esto consultará la base de datos PostgreSQL. Por ahora simulamos:
+        // Validación de Cliente consultando la Base de Datos PostgreSQL
         if (!empty($cedula) && !empty($password)) {
-            $_SESSION['usuario'] = "Cliente Cédula: " . $cedula;
-            $_SESSION['rol'] = 'cliente';
-            $_SESSION['id_cliente'] = $cedula; // Guardamos su cédula exacta para aislar sus cuentas
-            header("Location: index.php");
-            exit;
+            try {
+                // Buscamos al cliente por su cédula en tu tabla (ajusta el nombre de la tabla si es distinto, ej: 'clientes')
+                $stmt = $pdo->prepare("SELECT * FROM clientes WHERE cedula = :cedula");
+                $stmt->execute(['cedula' => $cedula]);
+                $cliente = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($cliente) {
+                    // Aquí validamos la contraseña. 
+                    // Si en tu base de datos usas password_hash(), usa password_verify($password, $cliente['password'])
+                    // Si guardas la contraseña plana temporalmente, usa: $cliente['password'] === $password
+                    if ($cliente['password'] === $password) {
+                        $_SESSION['usuario'] = $cliente['nombre'] . ' ' . $cliente['apellido'];
+                        $_SESSION['rol'] = 'cliente';
+                        $_SESSION['id_cliente'] = $cliente['cedula'];
+                        header("Location: index.php");
+                        exit;
+                    } else {
+                        $error = "Contraseña incorrecta para esta cédula.";
+                    }
+                } else {
+                    $error = "No se encontró ningún cliente registrado con la cédula: " . htmlspecialchars($cedula);
+                }
+            } catch (PDOException $e) {
+                $error = "Error al consultar la base de datos: " . $e->getMessage();
+            }
         } else {
             $error = "Por favor ingresa tu cédula y tu contraseña.";
         }
@@ -113,7 +133,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             font-weight: 500;
         }
     </style>
-    <!-- Script de JavaScript para mostrar el campo de cédula solo si eligen Cliente -->
     <script>
         function toggleCedula(select) {
             var campoCedula = document.getElementById('campo-cedula');
@@ -152,7 +171,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </select>
                     </div>
 
-                    <!-- Este campo de Cédula solo aparece si eligen "Cliente" gracias al JavaScript -->
                     <div class="mb-3" id="campo-cedula" style="display: none;">
                         <label class="form-label">Número de Cédula</label>
                         <input type="text" name="cedula" id="cedula-input" class="form-control form-control-custom" placeholder="Ej: 1006123456">
