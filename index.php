@@ -97,7 +97,7 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
                         <h5 class="fw-bold text-dark">Gestión de Clientes</h5>
                         <p class="text-muted small">Registrar nuevos clientes, actualizar datos y realizar búsquedas.</p>
                         <a href="Crearcliente.php" class="btn btn-sm btn-custom mt-auto w-100 mb-2">Nuevo Cliente</a>
-                        <a href="editar_cliente.php" class="btn btn-sm btn-outline-secondary w-100">Actualizar Datos</a>
+                        <a href="editar_cliente.php" class="btn btn-sm btn-outline-secondary w-100" style="position: relative; z-index: 10;">Actualizar Datos</a>
                     </div>
                 </div>
                 <div class="col-md-4">
