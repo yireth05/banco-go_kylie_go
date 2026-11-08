@@ -43,7 +43,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <body class="bg-light">
     <nav class="navbar navbar-dark bg-dark shadow-sm mb-4">
         <div class="container">
-            <span class="navbar-brand mb-0 h1">🏦 Banco Villavicencio</span>
+            <span class="navbar-brand mb-0 h1">Banco Villavicencio</span>
         </div>
     </nav>
 
