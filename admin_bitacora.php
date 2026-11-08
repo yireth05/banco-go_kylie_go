@@ -10,7 +10,7 @@ if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'administrador') {
 }
 
 try {
-    // Consultar los registros de la bitácora utilizando la variable $conexion
+    // Consultar los registros de la bitácora ordenados del más reciente al más antiguo
     $stmt = $conexion->query("SELECT * FROM bitacora_transacciones ORDER BY fecha_operacion DESC LIMIT 50");
     $bitacora = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
@@ -22,7 +22,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auditoría y Bitácora - Banco GO KYLIE GO</title>
+    <title>Auditoría y Bitácora - Banco Villavicencio</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
@@ -39,7 +39,7 @@ try {
                 <h2 class="fw-bold" style="color: var(--color-0e1b48);">Bitácora de Auditoría del Sistema</h2>
                 <p class="text-muted mb-0">Monitoreo en tiempo real de las operaciones registradas en PostgreSQL.</p>
             </div>
-            <a href="index.php" class="btn btn-outline-secondary rounded-pill">← Volver al Panel</a>
+            <a href="index.php" class="btn btn-outline-secondary rounded-pill">Volver al Panel</a>
         </div>
 
         <?php if (isset($error)): ?>
@@ -56,6 +56,7 @@ try {
                             <th>Fecha y Hora</th>
                             <th>Operación</th>
                             <th>ID Transacción</th>
+                            <th>Detalle de Auditoría</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -71,15 +72,17 @@ try {
                                         </span>
                                     </td>
                                     <td><?php echo $row['id_transaccion'] ?? 'N/A'; ?></td>
+                                    <td><small class="text-muted text-break" style="max-width: 300px; display: inline-block;"><?php echo htmlspecialchars($row['detalle'] ?? ''); ?></small></td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <tr><td colspan="5" class="text-center text-muted py-4">No hay registros en la bitácora todavía.</td></tr>
+                            <tr><td colspan="6" class="text-center text-muted py-4">No hay registros en la bitácora todavía. Realiza una transacción para verla reflejada aquí.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
