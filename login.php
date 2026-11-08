@@ -14,7 +14,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $port = "5432";
     $dbname = "banco_go_kylie_go"; 
     $db_user = "postgres";     
-    $db_pass = "admin123"
+    $db_pass = "admin123";
 
     try {
         $pdo = new PDO("pgsql:host=$host;port=$port;dbname=$dbname", $db_user, $db_pass);
