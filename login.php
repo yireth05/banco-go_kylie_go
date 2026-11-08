@@ -1,65 +1,76 @@
 <?php
 // login.php
 session_start();
-require_once 'conexion.php';
 
 $error = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $usuario  = $_POST['usuario'] ?? '';
-    $password = trim($_POST['password']);
-    $cedula   = trim($_POST['cedula'] ?? '');
+    $usuario_rol = $_POST['usuario'] ?? '';
+    $password    = trim($_POST['password']);
+    $cedula      = trim($_POST['cedula'] ?? '');
 
-    if ($usuario === 'administrador') {
-        // Credenciales fijas del Administrador
-        if ($password === 'admin123') {
-            $_SESSION['usuario'] = 'Administrador';
-            $_SESSION['rol'] = 'administrador';
-            header("Location: index.php");
-            exit;
-        } else {
-            $error = "Contraseña de administrador incorrecta.";
-        }
-    } elseif ($usuario === 'cajero') {
-        // Credenciales fijas del Cajero
-        if ($password === 'cajero123') {
-            $_SESSION['usuario'] = 'Cajero';
-            $_SESSION['rol'] = 'cajero';
-            header("Location: index.php");
-            exit;
-        } else {
-            $error = "Contraseña de cajero incorrecta.";
-        }
-    } elseif ($usuario === 'cliente') {
-        // Validación de Cliente consultando la Base de Datos PostgreSQL
-        if (!empty($cedula) && !empty($password)) {
-            try {
-                // Buscamos al cliente por su cédula en tu tabla (ajusta el nombre de la tabla si es distinto, ej: 'clientes')
-                $stmt = $pdo->prepare("SELECT * FROM clientes WHERE cedula = :cedula");
-                $stmt->execute(['cedula' => $cedula]);
-                $cliente = $stmt->fetch(PDO::FETCH_ASSOC);
+    // Definir credenciales y mapeo con los usuarios de PostgreSQL que creaste en tu BD
+    $db_user = "";
+    $rol_sistema = "";
 
-                if ($cliente) {
-                    // Aquí validamos la contraseña. 
-                    // Si en tu base de datos usas password_hash(), usa password_verify($password, $cliente['password'])
-                    // Si guardas la contraseña plana temporalmente, usa: $cliente['password'] === $password
-                    if ($cliente['password'] === $password) {
-                        $_SESSION['usuario'] = $cliente['nombre'] . ' ' . $cliente['apellido'];
+    if ($usuario_rol === 'administrador') {
+        $db_user = 'administrador';
+        $rol_sistema = 'administrador';
+    } elseif ($usuario_rol === 'cajero') {
+        $db_user = 'cajero';
+        $rol_sistema = 'cajero';
+    } elseif ($usuario_rol === 'cliente') {
+        $db_user = 'cliente';
+        $rol_sistema = 'cliente';
+    }
+
+    if (!empty($db_user)) {
+        // Intentamos conectar a PostgreSQL usando el usuario del rol seleccionado
+        $host = "localhost";
+        $port = "5432";
+        $dbname = "banco_db"; // Asegúrate de que este sea el nombre de tu base de datos
+        
+        // Contraseñas correspondientes a los usuarios creados en tu script SQL
+        $db_pass = ($db_user === 'administrador') ? 'admin123' : (($db_user === 'cajero') ? 'cajero123' : 'cliente123');
+
+        try {
+            // Probar conexión con las credenciales del rol
+            $pdo = new PDO("pgsql:host=$host;port=$port;dbname=$dbname", $db_user, $db_pass);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+            // Si es cliente, validamos adicionalmente que su cédula exista en la tabla clientes
+            if ($rol_sistema === 'cliente') {
+                if (empty($cedula)) {
+                    $error = "Por favor ingresa tu número de cédula.";
+                } else {
+                    $stmt = $pdo->prepare("SELECT * FROM clientes WHERE id_cliente = :cedula");
+                    $stmt->execute(['cedula' => $cedula]);
+                    $cliente_data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                    if ($cliente_data) {
+                        $_SESSION['usuario'] = $cliente_data['nomb_cli'] . ' ' . $cliente_data['apelli_cli'];
                         $_SESSION['rol'] = 'cliente';
-                        $_SESSION['id_cliente'] = $cliente['cedula'];
+                        $_SESSION['id_cliente'] = $cliente_data['id_cliente'];
                         header("Location: index.php");
                         exit;
                     } else {
-                        $error = "Contraseña incorrecta para esta cédula.";
+                        $error = "La cédula ingresada no se encuentra registrada en el banco.";
                     }
-                } else {
-                    $error = "No se encontró ningún cliente registrado con la cédula: " . htmlspecialchars($cedula);
                 }
-            } catch (PDOException $e) {
-                $error = "Error al consultar la base de datos: " . $e->getMessage();
+            } else {
+                // Si es Administrador o Cajero
+                if ($password === $db_pass) {
+                    $_SESSION['usuario'] = ucfirst($rol_sistema);
+                    $_SESSION['rol'] = $rol_sistema;
+                    header("Location: index.php");
+                    exit;
+                } else {
+                    $error = "Contraseña incorrecta para el rol seleccionado.";
+                }
             }
-        } else {
-            $error = "Por favor ingresa tu cédula y tu contraseña.";
+
+        } catch (PDOException $e) {
+            $error = "Error de autenticación o credenciales inválidas.";
         }
     } else {
         $error = "Por favor selecciona un rol válido.";
@@ -172,7 +183,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     </div>
 
                     <div class="mb-3" id="campo-cedula" style="display: none;">
-                        <label class="form-label">Número de Cédula</label>
+                        <label class="form-label">Número de Cédula (ID Cliente)</label>
                         <input type="text" name="cedula" id="cedula-input" class="form-control form-control-custom" placeholder="Ej: 1006123456">
                     </div>
 
