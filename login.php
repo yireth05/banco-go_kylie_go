@@ -13,11 +13,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $dbname = "banco_go_kylie_go";
 
     try {
-        // Intentamos conectar a PostgreSQL con las credenciales ingresadas
         $conexion = new PDO("pgsql:host=$host;port=$port;dbname=$dbname", $usuario, $password);
         $conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        // Guardamos las credenciales y definimos el rol de forma segura
         $_SESSION['usuario'] = $usuario;
         $_SESSION['password'] = $password;
 
@@ -27,7 +25,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $_SESSION['rol'] = 'cajero';
         } else {
             $_SESSION['rol'] = 'cliente';
-            $_SESSION['id_cliente'] = '1006123456'; // Cédula de ejemplo para aislar sus datos privados
+            $_SESSION['id_cliente'] = '1006123456';
         }
 
         header("Location: index.php");
@@ -47,44 +45,47 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
-            --color-1: #0E1B48; /* Azul Marino (Principal) */
-            --color-2: #C18DB4; /* Rosa Oscuro (Acentos) */
-            --color-3: #E2CAD8; /* Rosa Claro (Fondos suaves) */
-            --color-4: #87A7D0; /* Azul Claro (Focos y bordes) */
-            --color-5: #27425D; /* Azul Pizarra (Hover de botones) */
-            --color-6: #0E1F2F; /* Azul Noche (Textos oscuros) */
+            --color-0e1b48: #0E1B48;
+            --color-c18db4: #C18DB4;
+            --color-e2cad8: #E2CAD8;
+            --color-87a7d0: #87A7D0;
+            --color-27425d: #27425D;
+            --color-0e1f2f: #0E1F2F;
         }
         body {
-            background: linear-gradient(135deg, #f5f7fa 0%, var(--color-3) 100%);
+            background: linear-gradient(135deg, var(--color-e2cad8) 0%, var(--color-87a7d0) 100%);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             min-height: 100vh;
         }
         .card-custom {
             border-radius: 24px;
             border: none;
-            box-shadow: 0 15px 35px rgba(14, 27, 72, 0.1);
+            box-shadow: 0 15px 35px rgba(14, 27, 72, 0.15);
             background-color: #ffffff;
         }
-        .text-brand { color: var(--color-1); }
+        .text-brand { 
+            color: var(--color-0e1b48); 
+        }
         .form-label {
-            color: var(--color-5);
+            color: var(--color-0e1f2f);
             font-weight: 600;
             font-size: 0.9rem;
         }
         .form-control-custom {
             border-radius: 12px;
             padding: 12px 16px;
-            border: 2px solid #eef0f5;
+            border: 2px solid var(--color-e2cad8);
             background-color: #fcfcfd;
+            color: var(--color-0e1f2f);
             transition: all 0.3s ease;
         }
         .form-control-custom:focus {
-            border-color: var(--color-4);
-            box-shadow: 0 0 0 4px rgba(135, 167, 208, 0.2);
+            border-color: var(--color-87a7d0);
+            box-shadow: 0 0 0 4px rgba(135, 167, 208, 0.25);
             background-color: #ffffff;
         }
         .btn-custom {
-            background-color: var(--color-1);
+            background-color: var(--color-0e1b48);
             color: #ffffff;
             border-radius: 50rem;
             padding: 12px 24px;
@@ -95,10 +96,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             box-shadow: 0 4px 10px rgba(14, 27, 72, 0.2);
         }
         .btn-custom:hover {
-            background-color: var(--color-5);
+            background-color: var(--color-27425d);
             transform: translateY(-2px);
             box-shadow: 0 6px 15px rgba(39, 66, 93, 0.3);
+            color: var(--color-e2cad8);
+        }
+        .badge-accent {
+            background-color: var(--color-c18db4);
             color: #ffffff;
+            font-weight: 500;
         }
     </style>
 </head>
@@ -106,11 +112,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <div class="container" style="max-width: 400px;">
         <div class="card card-custom p-2">
             <div class="card-body p-4">
-                <h3 class="fw-bold text-brand mb-2 text-center">GO KYLIE GO</h3>
-                <p class="text-muted small text-center mb-4">Accede a tu banca segura</p>
+                <div class="text-center mb-3">
+                    <span class="badge badge-accent rounded-pill px-3 py-1 mb-2">Banca Segura</span>
+                    <h3 class="fw-bold text-brand mb-1">GO KYLIE GO</h3>
+                    <p class="text-muted small">Inicia sesión en tu cuenta</p>
+                </div>
 
                 <?php if ($error): ?>
-                    <div class="alert alert-danger py-2 small text-center rounded-4" style="background-color: #ffe6e6; color: #cc0000; border: none;"><?php echo $error; ?></div>
+                    <div class="alert alert-danger py-2 small text-center rounded-4" style="background-color: #f8d7da; color: #842029; border: none;"><?php echo $error; ?></div>
                 <?php endif; ?>
 
                 <form method="POST" action="login.php">
