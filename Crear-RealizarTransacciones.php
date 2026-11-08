@@ -1,37 +1,37 @@
 <?php
-// Crear-RealizarTransacciones.php
 session_start();
 require_once "conexionDB.php";
+
+if (!isset($_SESSION['rol'])) {
+    header("Location: login.php");
+    exit;
+}
 
 $mensaje = "";
 
 try {
-    // 1. Cargar TODAS las cuentas asociadas a sus clientes para filtrarlas por ID en JavaScript
     $cuentas = $conexion->query("SELECT num_cuenta, id_cliente, saldo FROM cuentas ORDER BY num_cuenta")->fetchAll(PDO::FETCH_ASSOC);
-
-    // 2. Cargar Tipos de Transacción y Formas de Pago desde las tablas maestras de PostgreSQL
     $tipos_transaccion = $conexion->query("SELECT cod_tipo_transaccion, nomb_tipo_transaccion FROM tipo_transacciones ORDER BY cod_tipo_transaccion")->fetchAll(PDO::FETCH_ASSOC);
-    $formas_pago = $conexion->query("SELECT cod_forma_pago, nomb_forma_pago FROM forma_pagos ORDER BY cod_forma_pago")->fetchAll(PDO::FETCH_ASSOC);
-
+    $formas_transaccion = $conexion->query("SELECT cod_forma_transaccion, nomb_forma_transaccion FROM formas_transacciones ORDER BY cod_forma_transaccion")->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
-    $error_carga = "Aviso: " . $e->getMessage();
+    $mensaje = "<div class='alert alert-warning'>Aviso al cargar datos: " . htmlspecialchars($e->getMessage()) . "</div>";
 }
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $id_cliente = $_POST["id_cliente"];
-    $num_cuenta = $_POST["num_cuenta"];
-    $cod_tipo   = $_POST["cod_tipo"];       
-    $cod_forma  = $_POST["cod_forma"];      
-    $monto      = $_POST["monto"];
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $id_cliente = trim($_POST["id_cliente"] ?? '');
+    $num_cuenta = trim($_POST["num_cuenta"] ?? '');
+    $cod_tipo   = (int)($_POST["cod_tipo"] ?? 0);
+    $cod_forma  = (int)($_POST["cod_forma"] ?? 0);
+    $monto      = (float)($_POST["monto"] ?? 0);
     
-    // El cajero físico opera en ventanilla, por lo que la banca virtual siempre es NULL
-    $id_banca_virtual = null; 
-    
-    // Capturar el ID del cajero si viene en el formulario o dejarlo nulo
-    $id_cajero = !empty($_POST["id_cajero"]) ? $_POST["id_cajero"] : null;
+    $id_banca_virtual = ($_SESSION['rol'] === 'cliente') ? 2 : null;
+    $id_cajero        = ($_SESSION['rol'] !== 'cliente' && !empty($_POST["id_cajero"])) ? (int)$_POST["id_cajero"] : null;
+    if ($_SESSION['rol'] !== 'cliente' && $id_cajero === null) {
+        $id_cajero = 1; 
+    }
 
     try {
-        $sql = "SELECT realizar_transaccion(:cliente, :cuenta, :tipo, :forma, :monto, :cajero, :banca)";
+        $sql  = "SELECT realizar_transaccion(:cliente, :cuenta, :tipo, :forma, :monto, :cajero, :banca)";
         $stmt = $conexion->prepare($sql);
         
         $stmt->execute([
@@ -44,18 +44,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             ':banca'   => $id_banca_virtual
         ]);
         
-        $mensaje = "<div class='alert alert-success alert-dismissible fade show' role='alert'>¡Transacción realizada con éxito!<button type='button' class='btn-close' data-bs-dismiss='alert' aria-label='Close'></button></div>";
-    
+        $mensaje = "<div class='alert alert-success alert-dismissible fade show' role='alert'>¡Transacción realizada con éxito!<button type='button' class='btn-close' data-bs-dismiss='alert'></button></div>";
     } catch (Exception $e) {
-        // Limpiamos el error técnico de PostgreSQL para mostrarlo de forma amigable
         $errorCompleto = $e->getMessage();
         if (preg_match('/ERROR:\s*(.*?)(?=\nCONTEXT:|$)/s', $errorCompleto, $coincidencias)) {
             $mensajeAmigable = trim($coincidencias[1]);
         } else {
             $mensajeAmigable = $errorCompleto;
         }
-
-        $mensaje = "<div class='alert alert-danger alert-dismissible fade show' role='alert'><strong>Atención:</strong> " . htmlspecialchars($mensajeAmigable) . "<button type='button' class='btn-close' data-bs-dismiss='alert' aria-label='Close'></button></div>";
+        $mensaje = "<div class='alert alert-danger alert-dismissible fade show' role='alert'><strong>Atención:</strong> " . htmlspecialchars($mensajeAmigable) . "<button type='button' class='btn-close' data-bs-dismiss='alert'></button></div>";
     }
 }
 ?>
@@ -64,37 +61,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Realizar Transacción - Banco GO KYLIE GO</title>
+    <title>Realizar Transacción - Banco Villavicencio</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-    <nav class="navbar navbar-dark bg-dark shadow-sm mb-4">
-        <div class="container">
-            <a class="navbar-brand mb-0 h1" href="index.php">Banco GO KYLIE GO</a>
-            <a href="index.php" class="btn btn-outline-light btn-sm rounded-pill">← Volver al Panel</a>
-        </div>
-    </nav>
+    <?php if (file_exists("navbar.php")) include_once "navbar.php"; ?>
 
     <div class="container mt-4 mb-5">
         <div class="row justify-content-center">
             <div class="col-md-8">
                 <div class="card shadow border-0 rounded-4">
                     <div class="card-header text-white py-3 rounded-top-4" style="background-color: #0E1B48;">
-                        <h4 class="mb-0">💸 Módulo de Transacciones en Ventanilla</h4>
+                        <h4 class="mb-0 fs-5">💸 Módulo de Transacciones</h4>
                     </div>
                     <div class="card-body p-4">
                         <?php echo $mensaje; ?>
                         
                         <form action="" method="POST" id="formTransaccion">
-                            
-                            <!-- 1. Escribir el ID del Cliente para buscar sus cuentas -->
                             <div class="mb-3">
                                 <label class="form-label fw-bold">ID / Cédula del Cliente <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="input_id_cliente" name="id_cliente" placeholder="Escriba el ID del cliente" required onkeyup="buscarCuentasPorId(this.value)" onchange="buscarCuentasPorId(this.value)">
                                 <div id="mensaje_cliente" class="form-text">Escriba el ID del cliente para cargar sus cuentas automáticamente.</div>
                             </div>
 
-                            <!-- 2. Seleccionar Cuenta (Se llena solo según el ID escrito) -->
                             <div class="mb-3">
                                 <label class="form-label fw-bold">Número de Cuenta Asociada <span class="text-danger">*</span></label>
                                 <select class="form-select" id="select_cuenta" name="num_cuenta" required disabled>
@@ -103,51 +92,42 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             </div>
                             
                             <div class="row">
-                                <!-- 3. Tipo de Transacción -->
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label fw-bold">Tipo de Transacción <span class="text-danger">*</span></label>
                                     <select class="form-select" name="cod_tipo" required>
                                         <option value="" selected disabled>Seleccione...</option>
                                         <?php foreach ($tipos_transaccion as $tipo): ?>
                                             <option value="<?php echo $tipo['cod_tipo_transaccion']; ?>">
-                                                <?php echo $tipo['cod_tipo_transaccion'] . " - " . $tipo['nomb_tipo_transaccion']; ?>
+                                                <?php echo $tipo['cod_tipo_transaccion'] . " - " . htmlspecialchars($tipo['nomb_tipo_transaccion']); ?>
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
 
-                                <!-- 4. Forma de Transacción / Pago -->
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label fw-bold">Forma de Transacción <span class="text-danger">*</span></label>
                                     <select class="form-select" name="cod_forma" required>
                                         <option value="" selected disabled>Seleccione...</option>
-                                        <?php if (!empty($formas_pago)): ?>
-                                            <?php foreach ($formas_pago as $forma): ?>
-                                                <option value="<?php echo $forma['cod_forma_pago']; ?>">
-                                                    <?php echo $forma['cod_forma_pago'] . " - " . $forma['nomb_forma_pago']; ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        <?php else: ?>
-                                            <!-- Respaldo por defecto si la tabla SQL está vacía -->
-                                            <option value="1">1 - Efectivo</option>
-                                            <option value="2">2 - Cheque</option>
-                                            <option value="3">3 - Transferencia</option>
-                                        <?php endif; ?>
+                                        <?php foreach ($formas_transaccion as $forma): ?>
+                                            <option value="<?php echo $forma['cod_forma_transaccion']; ?>">
+                                                <?php echo $forma['cod_forma_transaccion'] . " - " . htmlspecialchars($forma['nomb_forma_transaccion']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
                                     </select>
                                 </div>
                             </div>
 
-                            <!-- 5. Monto -->
                             <div class="mb-3">
                                 <label class="form-label fw-bold">Monto ($) <span class="text-danger">*</span></label>
                                 <input type="number" step="0.01" min="0.01" class="form-control" name="monto" placeholder="0.00" required>
                             </div>
 
-                            <!-- 6. ID Cajero Físico (Opcional) -->
-                            <div class="mb-3">
-                                <label class="form-label text-muted">ID Cajero Físico (Terminal de Sucursal)</label>
-                                <input type="number" class="form-control" name="id_cajero" placeholder="Opcional">
-                            </div>
+                            <?php if ($_SESSION['rol'] !== 'cliente'): ?>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">ID Cajero Físico (Terminal)</label>
+                                    <input type="number" class="form-control" name="id_cajero" value="1" placeholder="Ej: 1">
+                                </div>
+                            <?php endif; ?>
 
                             <div class="d-grid mt-4">
                                 <button type="submit" class="btn btn-success btn-lg rounded-pill">Procesar Transacción</button>
@@ -159,7 +139,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </div>
     </div>
 
-    <!-- Script JavaScript para filtrar cuentas al teclear el ID -->
     <script>
         var todasLasCuentas = <?php echo json_encode($cuentas); ?>;
 
