@@ -179,7 +179,7 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Servicios Bancarios</h5>
                         <p class="text-muted small">Consultar tipos de cuenta y tipos de transacciones disponibles.</p>
-                        <a href="admin_configuraciones.php" class="btn btn-sm btn-custom mt-auto w-100">Ver Productos</a>
+                        <a href="admin_configuraciones.php" class="btn btn-sm btn-custom mt-auto w-100">Ver Info.</a>
                     </div>
                 </div>
 
