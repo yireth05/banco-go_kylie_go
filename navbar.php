@@ -20,13 +20,12 @@ $rol = $_SESSION['rol'];
         --color-6: #0E1F2F; 
     }
     
-    /* Fondo de la barra de navegación usando el Azul Noche */
     .navbar-custom {
         background-color: var(--color-6);
         padding: 12px 0;
     }
     .navbar-brand {
-        color: var(--color-3) !important; /* Rosa Claro para la marca */
+        color: var(--color-3) !important;
         letter-spacing: 1px;
     }
     .nav-link {
@@ -37,11 +36,10 @@ $rol = $_SESSION['rol'];
         transition: all 0.3s ease;
     }
     .nav-link:hover {
-        background-color: rgba(226, 202, 216, 0.1); /* Efecto hover sutil */
-        color: var(--color-4) !important; /* Azul Claro al pasar el mouse */
+        background-color: rgba(226, 202, 216, 0.1);
+        color: var(--color-4) !important;
     }
     
-    /* Botón de cerrar sesión práctico y estilizado */
     .btn-logout {
         color: var(--color-2);
         border: 2px solid var(--color-2);
@@ -59,7 +57,7 @@ $rol = $_SESSION['rol'];
 
 <nav class="navbar navbar-expand-lg navbar-custom shadow-sm mb-4">
   <div class="container-fluid px-4">
-    <a class="navbar-brand fw-bold fs-5" href="index.php">GO KYLIE GO</a>
+    <a class="navbar-brand fw-bold fs-5" href="index.php">Banco Villavicencio</a>
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" style="border-color: var(--color-4);">
       <span class="navbar-toggler-icon" style="filter: invert(1);"></span>
@@ -78,6 +76,8 @@ $rol = $_SESSION['rol'];
 
         <?php if ($rol === 'administrador'): ?>
             <li class="nav-item"><a class="nav-link" href="gestion_prestamos.php">Préstamos</a></li>
+            <li class="nav-item"><a class="nav-link" href="admin_bitacora.php">Bitácora</a></li>
+            <li class="nav-item"><a class="nav-link" href="admin_configuraciones.php">Configuración</a></li>
         <?php endif; ?>
 
         <?php if ($rol === 'cliente'): ?>
@@ -88,7 +88,7 @@ $rol = $_SESSION['rol'];
 
       <div class="d-flex align-items-center mt-3 mt-lg-0">
         <span class="me-4" style="color: var(--color-4); font-size: 0.9rem;">
-          Rol: <strong style="color: var(--color-3);"><?php echo ucfirst($rol); ?></strong>
+          Rol: <strong style="color: var(--color-3);"><?php echo htmlspecialchars(ucfirst($rol)); ?></strong>
         </span>
         <a href="logout.php" class="btn btn-logout btn-sm text-decoration-none">Cerrar Sesión</a>
       </div>
