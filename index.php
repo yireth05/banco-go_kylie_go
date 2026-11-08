@@ -45,7 +45,7 @@ $usuario = $_SESSION['usuario'] ?? 'Usuario';
 
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom px-4 py-3">
         <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="index.php">🏦 Banco GO KYLIE GO</a>
+            <a class="navbar-brand fw-bold" href="index.php">Banco GO KYLIE GO</a>
             <div class="ms-auto d-flex align-items-center gap-3">
                 <span class="text-light small">Hola, <strong><?php echo htmlspecialchars($usuario); ?></strong> (Rol: <span class="badge bg-light text-dark"><?php echo ucfirst($rol); ?></span>)</span>
                 <a href="logout.php" class="btn btn-outline-light btn-sm rounded-pill px-3">Cerrar Sesión</a>
@@ -65,7 +65,7 @@ $usuario = $_SESSION['usuario'] ?? 'Usuario';
 
         <!-- VISTA ADMINISTRADOR -->
         <?php if ($rol === 'administrador'): ?>
-            <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">⚙️ Gestión Administrativa y Auditoría</h4>
+            <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">Gestión Administrativa y Auditoría</h4>
             <div class="row g-4">
                 <div class="col-md-4">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
@@ -92,7 +92,7 @@ $usuario = $_SESSION['usuario'] ?? 'Usuario';
 
         <!-- VISTA CAJERO -->
         <?php elseif ($rol === 'cajero'): ?>
-            <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">💼 Ventanilla y Operaciones de Caja</h4>
+            <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">Ventanilla y Operaciones de Caja</h4>
             <div class="row g-4">
                 <div class="col-md-4">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
@@ -119,7 +119,7 @@ $usuario = $_SESSION['usuario'] ?? 'Usuario';
 
         <!-- VISTA CLIENTE -->
         <?php elseif ($rol === 'cliente'): ?>
-            <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">👤 Mi Portal Bancario</h4>
+            <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);"> Mi Portal Bancario</h4>
             <div class="row g-4">
                 <div class="col-md-4">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
