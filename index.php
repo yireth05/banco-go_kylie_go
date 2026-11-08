@@ -122,7 +122,7 @@ $usuario = $_SESSION['usuario'] ?? 'Usuario';
                 </div>
             </div>
 
-        <<?php elseif ($rol === 'cliente'): ?>
+        <?php elseif ($rol === 'cliente'): ?>
             <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">Mi Portal Bancario</h4>
             <div class="row g-4">
                 <div class="col-md-4">
@@ -136,14 +136,14 @@ $usuario = $_SESSION['usuario'] ?? 'Usuario';
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Mis Datos Personales</h5>
                         <p class="text-muted small">Visualiza y actualiza tu información de contacto, dirección y teléfono.</p>
-                        <a href="editar_cliente.php" class="btn btn-sm btn-outline-dark mt-auto rounded-pill">Editar mis datos</a>
+                        <a href="perfil_cliente.php" class="btn btn-sm btn-outline-dark mt-auto rounded-pill">Editar mis datos</a>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
-                        <h5 class="fw-bold text-dark">Transacciones</h5>
-                        <p class="text-muted small">Realiza operativas y revisa tu historial personal de movimientos.</p>
-                        <a href="Crear-RealizarTransacciones.php" class="btn btn-sm btn-outline-dark mt-auto rounded-pill">Transferir / Operar</a>
+                        <h5 class="fw-bold text-dark">Historial de Transacciones</h5>
+                        <p class="text-muted small">Consulta el registro y detalle de los movimientos hechos en tus cuentas.</p>
+                        <a href="historial_transacciones.php" class="btn btn-sm btn-outline-dark mt-auto rounded-pill">Ver Historial</a>
                     </div>
                 </div>
             </div>
@@ -154,4 +154,3 @@ $usuario = $_SESSION['usuario'] ?? 'Usuario';
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-
