@@ -1,7 +1,7 @@
 <?php
 // admin_configuraciones.php
 session_start();
-require_once 'conexion.php';
+require_once 'conexionDB.php';
 
 // Validar que solo el administrador pueda entrar
 if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'administrador') {
