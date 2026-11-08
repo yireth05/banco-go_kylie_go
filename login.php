@@ -12,7 +12,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Configuración de conexión única a PostgreSQL (ajusta la contraseña de tu postgres de Docker si es diferente)
     $host = "localhost";
     $port = "5432";
-    $dbname = "banco_db"; 
+    $dbname = "banco_go_kylie_go"; 
     $db_user = "postgres";     
     $db_pass = "admin123"
 
