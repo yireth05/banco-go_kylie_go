@@ -105,7 +105,7 @@ $usuario = $_SESSION['usuario'] ?? 'Usuario';
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Actualizacion de Datos</h5>
                         <p class="text-muted small">Modificar la información de contacto de los clientes.</p>
-                        <a href="actualizar_cliente.php" class="btn btn-sm btn-primary mt-auto rounded-pill" style="background-color: var(--color-0e1b48);">Actualizar Datos</a>
+                        <a href="editar_cliente.php" class="btn btn-sm btn-primary mt-auto rounded-pill" style="background-color: var(--color-0e1b48);">Actualizar Datos</a>
                     </div>
                 </div>
                 <div class="col-md-3">
