@@ -161,7 +161,7 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
                 </li>
                 <li><hr class="dropdown-divider"></li>
                 <li>
-                    <a class="dropdown-item rounded py-2 fw-semibold text-dark" href="estado_cuentas.php">
+                    <a class="dropdown-item rounded py-2 fw-semibold text-dark" href="historial_transacciones.php">
                         <i class="bi bi-clock-history me-2"></i> Ver su historial
                     </a>
                 </li>
