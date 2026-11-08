@@ -1,12 +1,45 @@
 <?php
+// index.php - Panel Principal con Nombre de Usuario Dinámico
 session_start();
-if (!isset($_SESSION['usuario_id'])) {
+require_once 'conexionDB.php';
+
+if (!isset($_SESSION['rol'])) {
     header("Location: login.php");
     exit;
 }
 
 $rol = $_SESSION['rol'];
-$nombres = $_SESSION['nombres'] ?? 'Usuario';
+$nombre_usuario = "Usuario";
+
+// Obtener el nombre real según el tipo de rol y su identificador en sesión
+$usuario_id = $_SESSION['usuario_id'] ?? $_SESSION['id_cliente'] ?? null;
+
+try {
+    if ($rol === 'cliente' && $usuario_id) {
+        $stmt = $conexion->prepare("SELECT nomb_cli, apelli_cli FROM clientes WHERE id_cliente = ?");
+        $stmt->execute([$usuario_id]);
+        $res = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($res) {
+            $nombre_usuario = $res['nomb_cli'] . ' ' . $res['apelli_cli'];
+        }
+    } 
+    elseif ($rol === 'cajero' || $rol === 'administrador') {
+        // Si el cajero/admin se identifica por ID o nombre de rol en la sesión
+        $nombre_usuario = ucfirst($rol) . " del Sistema";
+        
+        // Si guardas el documento o nombre del empleado en la sesión, puedes consultarlo así:
+        if ($usuario_id) {
+            $stmt = $conexion->prepare("SELECT nomb_cli, apelli_cli FROM clientes WHERE id_cliente = ?");
+            $stmt->execute([$usuario_id]);
+            $res = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($res) {
+                $nombre_usuario = $res['nomb_cli'] . ' ' . $res['apelli_cli'];
+            }
+        }
+    }
+} catch (PDOException $e) {
+    $nombre_usuario = ucfirst($rol);
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -15,7 +48,6 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel Principal - Banco Villavicencio</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Iconos de Bootstrap -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     
     <style>
@@ -33,7 +65,6 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
-        /* Banner de Bienvenida */
         .welcome-hero {
             background: linear-gradient(135deg, var(--color-0e1b48) 0%, var(--color-27425d) 100%);
             border-radius: 20px;
@@ -55,7 +86,6 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
             pointer-events: none;
         }
 
-        /* Tarjetas de Menú */
         .card-menu {
             border: none;
             border-radius: 18px;
@@ -83,7 +113,6 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
             margin-bottom: 1rem;
         }
 
-        /* Botones personalizados */
         .btn-custom {
             background-color: var(--color-0e1b48);
             color: #ffffff;
@@ -119,14 +148,16 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
 
     <div class="container py-5">
         
-        <!-- Hero de Bienvenida -->
+        <!-- Hero de Bienvenida Dinámico con Nombre -->
         <div class="welcome-hero p-4 p-md-5 mb-5">
             <div class="row align-items-center">
-                <div class="col-md-8">
+                <div class="col-md-10">
                     <span class="badge bg-light text-dark mb-2 px-3 py-2 rounded-pill fw-bold">
                         <i class="bi bi-shield-check text-primary me-1"></i> Sesión Activa
                     </span>
-                    <h1 class="display-5 fw-bold mb-2">Bienvenido,</h1>
+                    <h1 class="display-5 fw-bold mb-2">
+                        ¡Bienvenido, <span style="color: var(--color-c18db4);"><?php echo htmlspecialchars($nombre_usuario); ?></span>!
+                    </h1>
                     <p class="fs-5 mb-0 opacity-75">
                         Estás operando bajo el perfil de <span class="badge text-bg-warning text-uppercase px-3 py-2"><?php echo htmlspecialchars($rol); ?></span>
                     </p>
@@ -143,12 +174,9 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
             </div>
 
             <div class="row g-4">
-                <!-- Tarjeta 1: Gestión de Clientes -->
                 <div class="col-md-6 col-lg-3">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
-                        <div class="icon-box">
-                            <i class="bi bi-people-fill"></i>
-                        </div>
+                        <div class="icon-box"><i class="bi bi-people-fill"></i></div>
                         <h5 class="fw-bold text-dark">Gestión de Clientes</h5>
                         <p class="text-muted small flex-grow-1">Registrar nuevos clientes, actualizar datos y realizar búsquedas.</p>
                         
@@ -163,12 +191,9 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
                     </div>
                 </div>
 
-                <!-- Tarjeta 2: Cuentas y Préstamos -->
                 <div class="col-md-6 col-lg-3">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
-                        <div class="icon-box">
-                            <i class="bi bi-credit-card-2-front-fill"></i>
-                        </div>
+                        <div class="icon-box"><i class="bi bi-credit-card-2-front-fill"></i></div>
                         <h5 class="fw-bold text-dark">Cuentas y Préstamos</h5>
                         <p class="text-muted small flex-grow-1">Abrir o modificar cuentas, registrar o actualizar préstamos.</p>
                         
@@ -181,12 +206,9 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
                     </div>
                 </div>
 
-                <!-- Tarjeta 3: Ventanilla de Transacciones -->
                 <div class="col-md-6 col-lg-3">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
-                        <div class="icon-box">
-                            <i class="bi bi-arrow-left-right"></i>
-                        </div>
+                        <div class="icon-box"><i class="bi bi-arrow-left-right"></i></div>
                         <h5 class="fw-bold text-dark">Ventanilla Transacciones</h5>
                         <p class="text-muted small flex-grow-1">Realizar depósitos/retiros y consultar historial de operaciones.</p>
                         
@@ -199,12 +221,9 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
                     </div>
                 </div>
 
-                <!-- Tarjeta 4: Consultas de Red -->
                 <div class="col-md-6 col-lg-3">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
-                        <div class="icon-box">
-                            <i class="bi bi-diagram-3-fill"></i>
-                        </div>
+                        <div class="icon-box"><i class="bi bi-diagram-3-fill"></i></div>
                         <h5 class="fw-bold text-dark">Consultas de Red</h5>
                         <p class="text-muted small flex-grow-1">Consultar sucursales, cajeros, tipos de cuenta y transacciones.</p>
                         
@@ -224,7 +243,6 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
             </div>
 
             <div class="row g-4">
-                <!-- Tarjeta 1: Mis Datos Personales -->
                 <div class="col-md-6 col-lg-3">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <div class="icon-box"><i class="bi bi-person-badge-fill"></i></div>
@@ -236,7 +254,6 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
                     </div>
                 </div>
 
-                <!-- Tarjeta 2: Mis Cuentas y Saldos -->
                 <div class="col-md-6 col-lg-3">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <div class="icon-box"><i class="bi bi-cash-coin"></i></div>
@@ -248,7 +265,6 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
                     </div>
                 </div>
 
-                <!-- Tarjeta 3: Transferencias -->
                 <div class="col-md-6 col-lg-3">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <div class="icon-box"><i class="bi bi-send-fill"></i></div>
@@ -276,7 +292,6 @@ $nombres = $_SESSION['nombres'] ?? 'Usuario';
                     </div>
                 </div>
 
-                <!-- Tarjeta 4: Servicios Bancarios -->
                 <div class="col-md-6 col-lg-3">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <div class="icon-box"><i class="bi bi-info-circle-fill"></i></div>
