@@ -1,140 +1,139 @@
 <?php
-// login.php
+// index.php o portada principal del banco
 session_start();
-
-$error = "";
-
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $usuario  = trim($_POST['usuario']);
-    $password = trim($_POST['password']);
-
-    $host   = "127.0.0.1";
-    $port   = "5432";
-    $dbname = "banco_go_kylie_go";
-
-    try {
-        $conexion = new PDO("pgsql:host=$host;port=$port;dbname=$dbname", $usuario, $password);
-        $conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-        $_SESSION['usuario'] = $usuario;
-        $_SESSION['password'] = $password;
-
-        if ($usuario === 'administrador') {
-            $_SESSION['rol'] = 'administrador';
-        } elseif ($usuario === 'cajero') {
-            $_SESSION['rol'] = 'cajero';
-        } else {
-            $_SESSION['rol'] = 'cliente';
-            $_SESSION['id_cliente'] = '1006123456';
-        }
-
-        header("Location: index.php");
-        exit;
-
-    } catch (PDOException $e) {
-        $error = "Usuario o contraseña incorrectos.";
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Banco GO KYLIE GO</title>
+    <title>Banco GO KYLIE GO - Banca Segura</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
-            --color-0e1b48: #0E1B48;
-            --color-c18db4: #C18DB4;
-            --color-e2cad8: #E2CAD8;
-            --color-87a7d0: #87A7D0;
-            --color-27425d: #27425D;
-            --color-0e1f2f: #0E1F2F;
+            --color-0e1b48: #0E1B48; /* Azul Marino Principal */
+            --color-c18db4: #C18DB4; /* Rosa Oscuro / Acento */
+            --color-e2cad8: #E2CAD8; /* Rosa Claro / Fondo suave */
+            --color-87a7d0: #87A7D0; /* Azul Claro / Bordes */
+            --color-27425d: #27425D; /* Azul Pizarra / Hover */
+            --color-0e1f2f: #0E1F2F; /* Azul Noche / Textos */
         }
         body {
             background: linear-gradient(135deg, var(--color-e2cad8) 0%, var(--color-87a7d0) 100%);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
-        .card-custom {
+        .navbar-custom {
+            background-color: var(--color-0e1b48);
+            box-shadow: 0 4px 12px rgba(14, 27, 72, 0.15);
+        }
+        .navbar-brand {
+            color: #ffffff !important;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .nav-link {
+            color: var(--color-e2cad8) !important;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+        .nav-link:hover {
+            color: #ffffff !important;
+        }
+        .hero-card {
             border-radius: 24px;
             border: none;
             box-shadow: 0 15px 35px rgba(14, 27, 72, 0.15);
             background-color: #ffffff;
+            padding: 40px;
         }
-        .text-brand { 
-            color: var(--color-0e1b48); 
+        .text-brand {
+            color: var(--color-0e1b48);
         }
-        .form-label {
-            color: var(--color-0e1f2f);
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-        .form-control-custom {
-            border-radius: 12px;
-            padding: 12px 16px;
-            border: 2px solid var(--color-e2cad8);
-            background-color: #fcfcfd;
-            color: var(--color-0e1f2f);
-            transition: all 0.3s ease;
-        }
-        .form-control-custom:focus {
-            border-color: var(--color-87a7d0);
-            box-shadow: 0 0 0 4px rgba(135, 167, 208, 0.25);
-            background-color: #ffffff;
-        }
-        .btn-custom {
+        .btn-primary-custom {
             background-color: var(--color-0e1b48);
             color: #ffffff;
             border-radius: 50rem;
-            padding: 12px 24px;
+            padding: 12px 28px;
             border: none;
             font-weight: 600;
-            letter-spacing: 0.5px;
             transition: all 0.3s ease;
             box-shadow: 0 4px 10px rgba(14, 27, 72, 0.2);
         }
-        .btn-custom:hover {
+        .btn-primary-custom:hover {
             background-color: var(--color-27425d);
             transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(39, 66, 93, 0.3);
-            color: var(--color-e2cad8);
-        }
-        .badge-accent {
-            background-color: var(--color-c18db4);
             color: #ffffff;
-            font-weight: 500;
+        }
+        .btn-outline-custom {
+            border: 2px solid var(--color-0e1b48);
+            color: var(--color-0e1b48);
+            border-radius: 50rem;
+            padding: 12px 28px;
+            font-weight: 600;
+            background-color: transparent;
+            transition: all 0.3s ease;
+        }
+        .btn-outline-custom:hover {
+            background-color: var(--color-0e1b48);
+            color: #ffffff;
+            transform: translateY(-2px);
+        }
+        footer {
+            background-color: var(--color-0e1f2f);
+            color: var(--color-e2cad8);
+            font-size: 0.85rem;
         }
     </style>
 </head>
-<body class="d-flex align-items-center vh-100">
-    <div class="container" style="max-width: 400px;">
-        <div class="card card-custom p-2">
-            <div class="card-body p-4">
-                <div class="text-center mb-3">
-                    <span class="badge badge-accent rounded-pill px-3 py-1 mb-2">Banca Segura</span>
-                    <h3 class="fw-bold text-brand mb-1">GO KYLIE GO</h3>
-                    <p class="text-muted small">Inicia sesión en tu cuenta</p>
+<body>
+
+    <!-- Menú de Navegación Superior -->
+    <nav class="navbar navbar-expand-lg navbar-custom px-4 py-3">
+        <div class="container-fluid">
+            <a class="navbar-brand fs-4" href="index.php">🏦 Banco GO KYLIE GO</a>
+            <button class="navbar-toggler bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+                <ul class="navbar-nav align-items-center gap-3">
+                    <li class="nav-item">
+                        <a class="nav-link" href="login.php">Iniciar Sesión</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="btn btn-light rounded-pill px-4 text-dark fw-bold" href="Crearcliente.php" style="color: var(--color-0e1b48) !important;">Crear Cliente</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenido Principal / Bienvenida -->
+    <div class="container my-auto py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8 text-center">
+                <div class="hero-card">
+                    <span class="badge rounded-pill px-3 py-2 mb-3" style="background-color: var(--color-c18db4); color: white; font-weight: 500;">Banca en Línea Segura</span>
+                    <h1 class="fw-bold text-brand display-5 mb-3">Bienvenido a Banco GO KYLIE GO</h1>
+                    <p class="text-muted mb-4 lead">Tu dinero, tus cuentas y tus transacciones gestionadas de forma rápida, moderna y segura en un solo lugar.</p>
+                    
+                    <div class="d-flex justify-content-center gap-3 flex-wrap">
+                        <a href="login.php" class="btn btn-primary-custom btn-lg">Entrar al Sistema</a>
+                        <a href="Crearcliente.php" class="btn btn-outline-custom btn-lg">Crear Nuevo Cliente</a>
+                    </div>
                 </div>
-
-                <?php if ($error): ?>
-                    <div class="alert alert-danger py-2 small text-center rounded-4" style="background-color: #f8d7da; color: #842029; border: none;"><?php echo $error; ?></div>
-                <?php endif; ?>
-
-                <form method="POST" action="login.php">
-                    <div class="mb-3">
-                        <label class="form-label">Usuario</label>
-                        <input type="text" name="usuario" class="form-control form-control-custom" placeholder="Ej: administrador" required>
-                    </div>
-                    <div class="mb-4">
-                        <label class="form-label">Contraseña</label>
-                        <input type="password" name="password" class="form-control form-control-custom" placeholder="••••••••" required>
-                    </div>
-                    <button type="submit" class="btn btn-custom w-100 mt-2">Iniciar Sesión</button>
-                </form>
             </div>
         </div>
     </div>
+
+    <!-- Pie de página -->
+    <footer class="text-center py-3">
+        <p class="mb-0">&copy; 2026 Banco GO KYLIE GO. Todos los derechos reservados.</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
