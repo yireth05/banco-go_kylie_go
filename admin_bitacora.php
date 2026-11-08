@@ -56,7 +56,6 @@ try {
                             <th>Fecha y Hora</th>
                             <th>Operación</th>
                             <th>ID Transacción</th>
-                            <th>Detalle JSON</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -72,11 +71,10 @@ try {
                                         </span>
                                     </td>
                                     <td><?php echo $row['id_transaccion'] ?? 'N/A'; ?></td>
-                                    <td><small class="text-muted font-monospace"><?php echo htmlspecialchars($row['detalle']); ?></small></td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <tr><td colspan="6" class="text-center text-muted py-4">No hay registros en la bitácora todavía.</td></tr>
+                            <tr><td colspan="5" class="text-center text-muted py-4">No hay registros en la bitácora todavía.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
