@@ -12,62 +12,65 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     try {
         if ($usuario_rol === 'administrador' || $usuario_rol === 'cajero') {
-            // Consulta en la tabla empleados según el rol 
+            // Consulta en la tabla empleados según el rol
             $stmt = $conexion->prepare("
                 SELECT * FROM empleados 
                 WHERE LOWER(rol) = :rol AND id_empleado = :cedula
             ");
             $stmt->execute([
-                ':rol'      => $usuario_rol,
-                ':cedula'   => $cedula
+                ':rol'    => $usuario_rol,
+                ':cedula' => $cedula
             ]);
             $empleado = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($empleado) {
-                // Verificar la clave. Aceptamos tanto la que está en la base de datos como la generada dinámicamente "nombre123"
                 $claveDinamica = strtolower($empleado['nomb_emp']) . "123";
                 
-                if ($password === $empleado['password'] || $password === $claveDinamica || $password === "admin123") {
-                    $_SESSION['nombres']     = $empleado['nomb_emp'] . ' ' . $empleado['apelli_emp'];
-                    $_SESSION['rol']         = strtolower($empleado['rol']);
-                    $_SESSION['usuario_id']  = $empleado['id_empleado'];
+                // Valida contraseña real en BD OR dinámica (nombre123) OR genérica de rol
+                if ($password === ($empleado['password'] ?? '') || 
+                    $password === $claveDinamica || 
+                    $password === ($usuario_rol . "123") || 
+                    $password === "admin123") {
+                    
+                    $_SESSION['nombres']    = $empleado['nomb_emp'] . ' ' . $empleado['apelli_emp'];
+                    $_SESSION['rol']        = strtolower($empleado['rol']);
+                    $_SESSION['usuario_id'] = $empleado['id_empleado'];
                     header("Location: index.php");
                     exit;
                 } else {
-                    $error = "Contraseña incorrecta para el empleado.";
+                    $error = "Contraseña incorrecta para el perfil de " . ucfirst($usuario_rol) . ".";
                 }
             } else {
-                $error = "La cédula no existe o no corresponde a un " . ucfirst($usuario_rol) . ".";
+                $error = "La cédula ingresada no corresponde a un " . ucfirst($usuario_rol) . ".";
             }
 
         } elseif ($usuario_rol === 'cliente') {
             // Consulta en la tabla clientes validando id_cliente
-            $stmt = $conexion->prepare("
-                SELECT * FROM clientes 
-                WHERE id_cliente = :cedula
-            ");
-            $stmt->execute([
-                ':cedula'   => $cedula
-            ]);
+            $stmt = $conexion->prepare("SELECT * FROM clientes WHERE id_cliente = :cedula");
+            $stmt->execute([':cedula' => $cedula]);
             $cliente = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($cliente) {
                 $claveDinamica = strtolower($cliente['nomb_cli']) . "123";
                 
-                if ($password === $cliente['password'] || $password === $claveDinamica || $password === "cliente123") {
-                    $_SESSION['nombres']     = $cliente['nomb_cli'] . ' ' . $cliente['apelli_cli'];
-                    $_SESSION['rol']         = 'cliente';
-                    $_SESSION['usuario_id']  = $cliente['id_cliente'];
+                // Valida contraseña real en BD OR dinámica (nombre123) OR genérica
+                if ($password === ($cliente['password'] ?? '') || 
+                    $password === $claveDinamica || 
+                    $password === "cliente123") {
+                    
+                    $_SESSION['nombres']    = $cliente['nomb_cli'] . ' ' . $cliente['apelli_cli'];
+                    $_SESSION['rol']        = 'cliente';
+                    $_SESSION['usuario_id'] = $cliente['id_cliente'];
                     header("Location: index.php");
                     exit;
                 } else {
                     $error = "Contraseña incorrecta para el cliente.";
                 }
             } else {
-                $error = "Cédula no encontrada.";
+                $error = "La cédula ingresada no se encuentra registrada.";
             }
         } else {
-            $error = "Seleccione un rol válido.";
+            $error = "Por favor selecciona un rol válido.";
         }
     } catch (PDOException $e) {
         $error = "Error de autenticación: " . $e->getMessage();
@@ -137,6 +140,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             font-weight: 500;
         }
     </style>
+    <script>
+        function toggleCedula(select) {
+            var campoCedula = document.getElementById('campo-cedula');
+            var labelCedula = document.getElementById('label-cedula');
+            
+            if (select.value === 'cliente') {
+                campoCedula.style.display = 'block';
+                labelCedula.innerText = 'Número de Cédula (ID Cliente)';
+                document.getElementById('cedula-input').required = true;
+            } else if (select.value === 'administrador' || select.value === 'cajero') {
+                campoCedula.style.display = 'block';
+                labelCedula.innerText = 'Identificación / Cédula de Empleado';
+                document.getElementById('cedula-input').required = true;
+            } else {
+                campoCedula.style.display = 'none';
+                document.getElementById('cedula-input').required = false;
+            }
+        }
+    </script>
 </head>
 <body class="d-flex align-items-center vh-100">
     <div class="container" style="max-width: 420px;">
@@ -155,7 +177,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 <form method="POST" action="login.php">
                     <div class="mb-3">
                         <label class="form-label">Seleccionar Tipo de Usuario</label>
-                        <select name="usuario" class="form-select form-control-custom" required>
+                        <select name="usuario" id="usuario-select" class="form-select form-control-custom" onchange="toggleCedula(this)" required>
                             <option value="" disabled selected>-- Elige una opción --</option>
                             <option value="administrador">Administrador</option>
                             <option value="cajero">Cajero</option>
@@ -163,9 +185,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         </select>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Identificación / Cédula / Usuario</label>
-                        <input type="text" name="cedula" class="form-control form-control-custom" placeholder="Ingrese ID o Cédula" required>
+                    <div class="mb-3" id="campo-cedula" style="display: none;">
+                        <label class="form-label" id="label-cedula">Identificación / Cédula</label>
+                        <input type="text" name="cedula" id="cedula-input" class="form-control form-control-custom" placeholder="Ingrese ID o Cédula">
                     </div>
 
                     <div class="mb-4">
