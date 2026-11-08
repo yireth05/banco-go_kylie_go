@@ -122,17 +122,24 @@ $usuario = $_SESSION['usuario'] ?? 'Usuario';
                 </div>
             </div>
 
-        <?php elseif ($rol === 'cliente'): ?>
+        <<?php elseif ($rol === 'cliente'): ?>
             <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">Mi Portal Bancario</h4>
             <div class="row g-4">
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Mis Cuentas y Saldos</h5>
                         <p class="text-muted small">Consulta el saldo actual de tus cuentas y estado de productos.</p>
                         <a href="estado_cuentas.php" class="btn btn-sm btn-outline-dark mt-auto rounded-pill">Ver mis cuentas</a>
                     </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
+                    <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
+                        <h5 class="fw-bold text-dark">Mis Datos Personales</h5>
+                        <p class="text-muted small">Visualiza y actualiza tu información de contacto, dirección y teléfono.</p>
+                        <a href="perfil_cliente.php" class="btn btn-sm btn-outline-dark mt-auto rounded-pill">Editar mis datos</a>
+                    </div>
+                </div>
+                <div class="col-md-4">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Transacciones</h5>
                         <p class="text-muted small">Realiza operativas y revisa tu historial personal de movimientos.</p>
