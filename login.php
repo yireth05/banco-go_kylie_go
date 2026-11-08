@@ -1,29 +1,20 @@
 <?php
 // login.php
 session_start();
+require_once "conexionDB.php";
 
 $error = "";
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $usuario_rol = $_POST['usuario'] ?? '';
-    $password    = trim($_POST['password']);
+    $password    = trim($_POST['password'] ?? '');
     $cedula      = trim($_POST['cedula'] ?? '');
 
-    // Configuración de conexión única a PostgreSQL (ajusta la contraseña de tu postgres de Docker si es diferente)
-    $host = "localhost";
-    $port = "5432";
-    $dbname = "banco_go_kylie_go"; 
-    $db_user = "postgres";     
-    $db_pass = "admin123";
-
     try {
-        $pdo = new PDO("pgsql:host=$host;port=$port;dbname=$dbname", $db_user, $db_pass);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
         if ($usuario_rol === 'administrador') {
             if ($password === 'admin123') {
                 $_SESSION['usuario'] = 'Administrador';
-                $_SESSION['rol'] = 'administrador';
+                $_SESSION['rol']     = 'administrador';
                 header("Location: index.php");
                 exit;
             } else {
@@ -32,7 +23,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         } elseif ($usuario_rol === 'cajero') {
             if ($password === 'cajero123') {
                 $_SESSION['usuario'] = 'Cajero';
-                $_SESSION['rol'] = 'cajero';
+                $_SESSION['rol']     = 'cajero';
                 header("Location: index.php");
                 exit;
             } else {
@@ -41,14 +32,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         } elseif ($usuario_rol === 'cliente') {
             if (!empty($cedula) && !empty($password)) {
                 if ($password === 'cliente123') {
-                    // Consultar si la cédula existe en la tabla clientes
-                    $stmt = $pdo->prepare("SELECT * FROM clientes WHERE id_cliente = :cedula");
+                    $stmt = $conexion->prepare("SELECT * FROM clientes WHERE id_cliente = :cedula");
                     $stmt->execute(['cedula' => $cedula]);
                     $cliente_data = $stmt->fetch(PDO::FETCH_ASSOC);
 
                     if ($cliente_data) {
-                        $_SESSION['usuario'] = $cliente_data['nomb_cli'] . ' ' . $cliente_data['apelli_cli'];
-                        $_SESSION['rol'] = 'cliente';
+                        $_SESSION['usuario']    = $cliente_data['nomb_cli'] . ' ' . $cliente_data['apelli_cli'];
+                        $_SESSION['rol']        = 'cliente';
                         $_SESSION['id_cliente'] = $cliente_data['id_cliente'];
                         header("Location: index.php");
                         exit;
@@ -64,7 +54,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         } else {
             $error = "Por favor selecciona un rol válido.";
         }
-
     } catch (PDOException $e) {
         $error = "Error de conexión a la base de datos: " . $e->getMessage();
     }
@@ -75,7 +64,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Banco GO KYLIE GO</title>
+    <title>Login - Banco Villavicencio</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
@@ -88,7 +77,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         body {
             background: linear-gradient(135deg, var(--color-e2cad8) 0%, var(--color-87a7d0) 100%);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             min-height: 100vh;
         }
         .card-custom {
@@ -98,11 +87,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             background-color: #ffffff;
         }
         .text-brand { color: var(--color-0e1b48); }
-        .form-label {
-            color: var(--color-0e1f2f);
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
+        .form-label { color: var(--color-0e1f2f); font-weight: 600; font-size: 0.9rem; }
         .form-control-custom {
             border-radius: 12px;
             padding: 12px 16px;
@@ -156,12 +141,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <div class="card-body p-4">
                 <div class="text-center mb-4">
                     <span class="badge badge-accent rounded-pill px-3 py-1 mb-2">Banca Segura</span>
-                    <h3 class="fw-bold text-brand mb-1">Banco GO KYLIE GO</h3>
+                    <h3 class="fw-bold text-brand mb-1">Banco Villavicencio</h3>
                     <p class="text-muted small">Acceso al sistema por perfil</p>
                 </div>
 
                 <?php if ($error): ?>
-                    <div class="alert alert-danger py-2 small text-center rounded-4" style="background-color: #f8d7da; color: #842029; border: none;"><?php echo $error; ?></div>
+                    <div class="alert alert-danger py-2 small text-center rounded-4" style="background-color: #f8d7da; color: #842029; border: none;"><?php echo htmlspecialchars($error); ?></div>
                 <?php endif; ?>
 
                 <form method="POST" action="login.php">
