@@ -15,11 +15,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $cod_tipo   = (int)($_POST["cod_tipo"] ?? 0);
     $cod_forma  = (int)($_POST["cod_forma"] ?? 0);
     $monto      = (float)($_POST["monto"] ?? 0);
-    
+
+    // Definir origen: Si es cliente es banca virtual (2), si es empleado/cajero toma su ID de sesión
     $id_banca_virtual = ($_SESSION['rol'] === 'cliente') ? 2 : null;
-    $id_cajero        = ($_SESSION['rol'] !== 'cliente' && !empty($_POST["id_cajero"])) ? (int)$_POST["id_cajero"] : null;
-    if ($_SESSION['rol'] !== 'cliente' && $id_cajero === null) {
-        $id_cajero = 1; 
+    
+    // Captura automática del ID del cajero autenticado en la sesión
+    // (Asegúrate de que al hacer login guardes el ID del empleado en $_SESSION['id_empleado'])
+    $id_cajero = null;
+    if ($_SESSION['rol'] !== 'cliente') {
+        $id_cajero = $_SESSION['id_empleado'] ?? $_SESSION['usuario_id'] ?? 1; 
     }
 
     try {
@@ -48,7 +52,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 }
 
-// Carga de datos actualizada (se ejecuta siempre para obtener los saldos frescos)
+// Carga de cuentas con saldos actualizados en tiempo real
 try {
     $cuentas = $conexion->query("SELECT num_cuenta, id_cliente, saldo FROM cuentas ORDER BY num_cuenta")->fetchAll(PDO::FETCH_ASSOC);
     $tipos_transaccion = $conexion->query("SELECT cod_tipo_transaccion, nomb_tipo_transaccion FROM tipo_transacciones ORDER BY cod_tipo_transaccion")->fetchAll(PDO::FETCH_ASSOC);
@@ -125,13 +129,6 @@ try {
                                 <label class="form-label fw-bold">Monto ($) <span class="text-danger">*</span></label>
                                 <input type="number" step="0.01" min="0.01" class="form-control" name="monto" placeholder="0.00" required>
                             </div>
-
-                            <?php if ($_SESSION['rol'] !== 'cliente'): ?>
-                                <div class="mb-3">
-                                    <label class="form-label text-muted fw-bold">ID Cajero Físico (Terminal)</label>
-                                    <input type="number" class="form-control" name="id_cajero" value="1" placeholder="Ej: 1">
-                                </div>
-                            <?php endif; ?>
 
                             <div class="d-grid mt-4">
                                 <button type="submit" class="btn btn-success btn-lg rounded-pill shadow-sm">Procesar Transacción</button>
