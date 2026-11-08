@@ -17,26 +17,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $conexion = new PDO("pgsql:host=$host;port=$port;dbname=$dbname", $usuario, $password);
         $conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        // Guardamos las credenciales básicas en la sesión
+        // Guardamos las credenciales y definimos el rol de forma segura
         $_SESSION['usuario'] = $usuario;
         $_SESSION['password'] = $password;
 
-        // Definimos el rol de manera segura según el usuario que ingresó
         if ($usuario === 'administrador') {
             $_SESSION['rol'] = 'administrador';
         } elseif ($usuario === 'cajero') {
             $_SESSION['rol'] = 'cajero';
         } else {
-            // Si es un cliente, definimos su rol y asignamos su ID/cédula para la privacidad
             $_SESSION['rol'] = 'cliente';
-            
-            // Consultamos la cédula real vinculada a este cliente en la base de datos
-            $stmt_cli = $conexion->prepare("SELECT id_cliente FROM clientes WHERE correo LIKE ? OR id_cliente = ?");
-            // Por defecto, si entra como 'cliente', asociamos su identificador correspondiente
-            $_SESSION['id_cliente'] = '1006123456'; // Puedes adaptarlo o buscarlo dinámicamente según tu tabla
+            $_SESSION['id_cliente'] = '1006123456'; // Cédula de ejemplo para aislar sus datos privados
         }
 
-        // Redirigimos al panel principal del banco
         header("Location: index.php");
         exit;
 
@@ -123,7 +116,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <form method="POST" action="login.php">
                     <div class="mb-3">
                         <label class="form-label">Usuario</label>
-                        <input type="text" name="usuario" class="form-control form-control-custom" placeholder="Ej: administrador, cajero, cliente" required>
+                        <input type="text" name="usuario" class="form-control form-control-custom" placeholder="Ej: administrador" required>
                     </div>
                     <div class="mb-4">
                         <label class="form-label">Contraseña</label>
