@@ -3,7 +3,7 @@ if (!isset($_POST["id_cliente"]) || !isset($_POST["nomb_cli"]) || !isset($_POST[
     exit("Faltan datos obligatorios por enviar, porfavor ingresar datos faltantes.");
 }
 
-include_once "conexionDB-php";
+include_once "conexionDB.php";
 $id_cliente=$_POST["id_cliente"];
 $nomb_cli=$_POST["nomb_cli"];
 $apelli_cli=$_POST["apelli_cli"];
@@ -17,10 +17,11 @@ try{
 
     $resultado=$sentencia->execute([$id_cliente,$nomb_cli,$apelli_cli,$direccion,$telefono,$correo]);
 
-    if($resultado === true){
+    if($resultado === true) {
         header("Location:nuevo_cliente.php?exito=1");
         exit;
-}
-    catch (PDOExceptionn $e) {
+    }
+} catch (PDOException $e) {
   echo "Error al crear nuevo cliente: " . $e->getMessage(); 
+}
 ?>
