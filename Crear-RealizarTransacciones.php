@@ -9,7 +9,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $cod_forma = $_POST["cod_forma"];     // 1: Efectivo, 2: Cheque, 3: Transferencia, etc.
     $monto = $_POST["monto"];
     
-    $id_banca_virtual = !empty($_POST["id_banca_virtual"]) ? $_POST["id_banca_virtual"] : null;  
+    $id_banca_virtual = !empty($_POST["id_banca_virtual"]) ? $_POST["id_banca_virtual"] : null;
+    $id_cajero = !empty($_POST["id_cajero"]) ? $_POST["id_cajero"] : null;
 
     try {
         // Llamar a la función almacenada de PostgreSQL usando PDO
