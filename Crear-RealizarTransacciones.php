@@ -17,15 +17,15 @@ $error = "";
 $cuentas = [];
 try {
     if ($rol === 'cliente' && $id_cliente) {
-        $stmt = $conexion->prepare("SELECT num_cuenta, saldo FROM cuentas WHERE id_cliente = :cli");
+        $stmt = $conexion->prepare("SELECT num_cuenta, saldo FROM cuentas WHERE id_cliente = :cli ORDER BY num_cuenta");
         $stmt->execute([':cli' => $id_cliente]);
         $cuentas = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } else {
         $cuentas = $conexion->query("SELECT num_cuenta, saldo FROM cuentas ORDER BY num_cuenta")->fetchAll(PDO::FETCH_ASSOC);
     }
     
-    $tipos = $conexion->query("SELECT * FROM tipo_transacciones")->fetchAll(PDO::FETCH_ASSOC);
-    $formas = $conexion->query("SELECT * FROM formas_transacciones")->fetchAll(PDO::FETCH_ASSOC);
+    $tipos = $conexion->query("SELECT * FROM tipo_transacciones ORDER BY cod_tipo_transaccion")->fetchAll(PDO::FETCH_ASSOC);
+    $formas = $conexion->query("SELECT * FROM formas_transacciones ORDER BY cod_forma_transaccion")->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     $error = "Error al obtener datos: " . $e->getMessage();
 }
@@ -37,18 +37,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $cod_tipo = intval($_POST['cod_tipo_transaccion'] ?? 1);
     $cod_forma = intval($_POST['cod_forma_transaccion'] ?? 1);
 
+    // Asignación de canal para cumplir con el CHECK constraint ck_transacciones_origen
+    // Si la transacción es por Banca Virtual (cod_forma = 3 o transferencia web) asigna id_banca_virtual
+    // Si es por Efectivo/Cajero (cod_forma = 1 o 2) asigna id_cajero = 1
+    $id_cajero = ($cod_forma == 3) ? null : 1;
+    $id_banca_virtual = ($cod_forma == 3) ? 1 : null;
+
     try {
         $stmt = $conexion->prepare("
-            INSERT INTO transacciones (fecha_transaccion, monto_transaccion, num_cuenta_origen, cod_tipo_transaccion, cod_forma_transaccion)
-            VALUES (NOW(), :monto, :cuenta, :tipo, :forma)
+            INSERT INTO transacciones (
+                fecha_transaccion, 
+                monto_transaccion, 
+                num_cuenta_origen, 
+                cod_tipo_transaccion, 
+                cod_forma_transaccion, 
+                id_cajero, 
+                id_banca_virtual
+            )
+            VALUES (NOW(), :monto, :cuenta, :tipo, :forma, :cajero, :banca)
         ");
         $stmt->execute([
-            ':monto' => $monto,
-            ':cuenta' => $num_cuenta,
-            ':tipo' => $cod_tipo,
-            ':forma' => $cod_forma
+            ':monto'   => $monto,
+            ':cuenta'  => $num_cuenta,
+            ':tipo'    => $cod_tipo,
+            ':forma'   => $cod_forma,
+            ':cajero'  => $id_cajero,
+            ':banca'   => $id_banca_virtual
         ]);
         $mensaje = "Transacción realizada con éxito.";
+
+        // Recargar las cuentas para actualizar el saldo visible
+        if ($rol === 'cliente' && $id_cliente) {
+            $stmt = $conexion->prepare("SELECT num_cuenta, saldo FROM cuentas WHERE id_cliente = :cli ORDER BY num_cuenta");
+            $stmt->execute([':cli' => $id_cliente]);
+            $cuentas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
     } catch (PDOException $e) {
         $error = "Error en la transacción: " . $e->getMessage();
     }
@@ -58,30 +81,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Realizar Transacciones - Banco Villavicencio</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
-            --color-0e1b48: #0E1B48; --color-c18db4: #C18DB4;
-            --color-e2cad8: #E2CAD8; --color-87a7d0: #87A7D0;
+            --color-0e1b48: #0E1B48;
+            --color-c18db4: #C18DB4;
+            --color-e2cad8: #E2CAD8;
+            --color-87a7d0: #87A7D0;
             --color-27425d: #27425D;
+            --color-0e1f2f: #0E1F2F;
         }
-        body { background: linear-gradient(135deg, #f8f9fa 0%, var(--color-e2cad8) 100%); min-height: 100vh; }
-        .card-custom { border-radius: 16px; border: none; box-shadow: 0 8px 24px rgba(14, 27, 72, 0.08); }
-        .btn-custom { background-color: var(--color-0e1b48); color: #fff; border-radius: 50rem; font-weight: 600; }
-        .btn-custom:hover { background-color: var(--color-27425d); color: #fff; }
+        body { 
+            background: linear-gradient(135deg, #f8f9fa 0%, var(--color-e2cad8) 100%);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            min-height: 100vh;
+        }
+        .card-custom { 
+            border-radius: 16px; 
+            border: none; 
+            box-shadow: 0 8px 24px rgba(14, 27, 72, 0.08); 
+        }
+        .btn-custom { 
+            background-color: var(--color-0e1b48); 
+            color: #ffffff; 
+            border-radius: 50rem; 
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-custom:hover { 
+            background-color: var(--color-27425d); 
+            color: #ffffff; 
+        }
+        .btn-back {
+            background-color: var(--color-c18db4);
+            color: #ffffff;
+            border-radius: 50rem;
+            border: none;
+            font-weight: 600;
+        }
+        .btn-back:hover {
+            background-color: var(--color-87a7d0);
+            color: var(--color-0e1b48);
+        }
     </style>
 </head>
 <body>
-    <?php include 'navbar.php'; ?>
+    <?php if (file_exists("navbar.php")) include_once "navbar.php"; ?>
+
     <div class="container py-5 mt-3">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="fw-bold" style="color: var(--color-0e1b48);">Módulo de Transacciones</h2>
-            <a href="index.php" class="btn btn-outline-secondary rounded-pill">← Volver al Panel</a>
+            <div>
+                <h2 class="fw-bold" style="color: var(--color-0e1b48);">Módulo de Transacciones</h2>
+                <p class="text-muted mb-0">Realiza depósitos, retiros o transferencias en tu cuenta.</p>
+            </div>
+            <a href="index.php" class="btn btn-back px-4 py-2">← Volver al Panel</a>
         </div>
 
-        <?php if ($mensaje): ?><div class="alert alert-success rounded-4"><?php echo htmlspecialchars($mensaje); ?></div><?php endif; ?>
-        <?php if ($error): ?><div class="alert alert-danger rounded-4"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
+        <?php if ($mensaje): ?>
+            <div class="alert alert-success rounded-4 border-0 shadow-sm mb-4"><?php echo htmlspecialchars($mensaje); ?></div>
+        <?php endif; ?>
+        <?php if ($error): ?>
+            <div class="alert alert-danger rounded-4 border-0 shadow-sm mb-4"><?php echo htmlspecialchars($error); ?></div>
+        <?php endif; ?>
 
         <div class="card card-custom p-4 bg-white col-lg-6 mx-auto">
             <form method="POST">
@@ -124,5 +187,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
         </div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
