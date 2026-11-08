@@ -94,24 +94,31 @@ $usuario = $_SESSION['usuario'] ?? 'Usuario';
         <?php elseif ($rol === 'cajero'): ?>
             <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">Ventanilla y Operaciones de Caja</h4>
             <div class="row g-4">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
-                        <h5 class="fw-bold text-dark">Gestión de Clientes</h5>
-                        <p class="text-muted small">Registrar nuevo cliente, actualizar datos y consultar perfiles.</p>
-                        <a href="Crearcliente.php" class="btn btn-sm btn-primary mt-auto rounded-pill" style="background-color: var(--color-0e1b48);">Registrar Cliente</a>
+                        <h5 class="fw-bold text-dark">Registro de Clientes</h5>
+                        <p class="text-muted small">Registrar nuevos clientes en el sistema bancario.</p>
+                        <a href="Crearcliente.php" class="btn btn-sm btn-primary mt-auto rounded-pill" style="background-color: var(--color-0e1b48);">Crear Cliente</a>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
+                    <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
+                        <h5 class="fw-bold text-dark">Actualizacion de Datos</h5>
+                        <p class="text-muted small">Modificar la información de contacto de los clientes.</p>
+                        <a href="actualizar_cliente.php" class="btn btn-sm btn-primary mt-auto rounded-pill" style="background-color: var(--color-0e1b48);">Actualizar Datos</a>
+                    </div>
+                </div>
+                <div class="col-md-3">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Cuentas y Préstamos</h5>
                         <p class="text-muted small">Abrir nueva cuenta, modificar cuentas y registrar préstamos.</p>
                         <a href="crear_cuenta.php" class="btn btn-sm btn-primary mt-auto rounded-pill" style="background-color: var(--color-0e1b48);">Gestionar Cuentas</a>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
                         <h5 class="fw-bold text-dark">Transacciones</h5>
-                        <p class="text-muted small">Realizar transacciones en ventanilla y leer bitácoras de operaciones.</p>
+                        <p class="text-muted small">Realizar depósitos y retiros en ventanilla de forma segura.</p>
                         <a href="Crear-RealizarTransacciones.php" class="btn btn-sm btn-primary mt-auto rounded-pill" style="background-color: var(--color-0e1b48);">Hacer Transacción</a>
                     </div>
                 </div>
@@ -119,7 +126,7 @@ $usuario = $_SESSION['usuario'] ?? 'Usuario';
 
         <!-- VISTA CLIENTE -->
         <?php elseif ($rol === 'cliente'): ?>
-            <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);"> Mi Portal Bancario</h4>
+            <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">Mi Portal Bancario</h4>
             <div class="row g-4">
                 <div class="col-md-4">
                     <div class="card card-menu p-4 bg-white h-100 d-flex flex-column">
