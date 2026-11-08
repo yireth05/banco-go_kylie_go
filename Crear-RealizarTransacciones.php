@@ -7,22 +7,22 @@ if (!isset($_SESSION['rol'])) {
     exit;
 }
 
+$rol = $_SESSION['rol'];
 $mensaje = "";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $id_cliente = trim($_POST["id_cliente"] ?? '');
+    // Si es cliente, forzamos de forma segura el id_cliente desde la sesión activa
+    $id_cliente = ($rol === 'cliente') ? $_SESSION['id_cliente'] : trim($_POST["id_cliente"] ?? '');
     $num_cuenta = trim($_POST["num_cuenta"] ?? '');
     $cod_tipo   = (int)($_POST["cod_tipo"] ?? 0);
     $cod_forma  = (int)($_POST["cod_forma"] ?? 0);
     $monto      = (float)($_POST["monto"] ?? 0);
 
     // Definir origen: Si es cliente es banca virtual (2), si es empleado/cajero toma su ID de sesión
-    $id_banca_virtual = ($_SESSION['rol'] === 'cliente') ? 2 : null;
+    $id_banca_virtual = ($rol === 'cliente') ? 2 : null;
     
-    // Captura automática del ID del cajero autenticado en la sesión
-    // (Asegúrate de que al hacer login guardes el ID del empleado en $_SESSION['id_empleado'])
     $id_cajero = null;
-    if ($_SESSION['rol'] !== 'cliente') {
+    if ($rol !== 'cliente') {
         $id_cajero = $_SESSION['id_empleado'] ?? $_SESSION['usuario_id'] ?? 1; 
     }
 
@@ -52,9 +52,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 }
 
-// Carga de cuentas con saldos actualizados en tiempo real
+// Carga de datos optimizada según el rol
 try {
-    $cuentas = $conexion->query("SELECT num_cuenta, id_cliente, saldo FROM cuentas ORDER BY num_cuenta")->fetchAll(PDO::FETCH_ASSOC);
+    if ($rol === 'cliente') {
+        // Cargar únicamente las cuentas del cliente que ha iniciado sesión
+        $stmt_cuentas = $conexion->prepare("SELECT num_cuenta, id_cliente, saldo FROM cuentas WHERE id_cliente = :id ORDER BY num_cuenta");
+        $stmt_cuentas->execute([':id' => $_SESSION['id_cliente']]);
+        $cuentas = $stmt_cuentas->fetchAll(PDO::FETCH_ASSOC);
+    } else {
+        // Cargar todas las cuentas para que el cajero/admin pueda buscar por ID de cliente
+        $cuentas = $conexion->query("SELECT num_cuenta, id_cliente, saldo FROM cuentas ORDER BY num_cuenta")->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     $tipos_transaccion = $conexion->query("SELECT cod_tipo_transaccion, nomb_tipo_transaccion FROM tipo_transacciones ORDER BY cod_tipo_transaccion")->fetchAll(PDO::FETCH_ASSOC);
     $formas_transaccion = $conexion->query("SELECT cod_forma_transaccion, nomb_forma_transaccion FROM formas_transacciones ORDER BY cod_forma_transaccion")->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
@@ -86,18 +95,41 @@ try {
                         <?php echo $mensaje; ?>
                         
                         <form action="" method="POST" id="formTransaccion">
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">ID / Cédula del Cliente <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="input_id_cliente" name="id_cliente" placeholder="Escriba el ID del cliente" required onkeyup="buscarCuentasPorId(this.value)" onchange="buscarCuentasPorId(this.value)">
-                                <div id="mensaje_cliente" class="form-text">Escriba el ID del cliente para cargar sus cuentas automáticamente.</div>
-                            </div>
+                            <?php if ($rol === 'cliente'): ?>
+                                <!-- Si es cliente, la cédula va oculta y fija con el valor de su sesión -->
+                                <input type="hidden" name="id_cliente" value="<?php echo htmlspecialchars($_SESSION['id_cliente']); ?>">
+                                
+                                <div class="mb-3 p-3 bg-white rounded-3 border">
+                                    <span class="text-muted small d-block">Titular de la cuenta:</span>
+                                    <strong class="text-dark fs-6"><?php echo htmlspecialchars($_SESSION['usuario']); ?> (Cédula: <?php echo htmlspecialchars($_SESSION['id_cliente']); ?>)</strong>
+                                </div>
 
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Número de Cuenta Asociada <span class="text-danger">*</span></label>
-                                <select class="form-select" id="select_cuenta" name="num_cuenta" required disabled>
-                                    <option value="" selected disabled>-- Escriba primero un ID de cliente válido --</option>
-                                </select>
-                            </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Seleccione su Cuenta <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="select_cuenta" name="num_cuenta" required>
+                                        <option value="" selected disabled>-- Seleccione una cuenta --</option>
+                                        <?php foreach ($cuentas as $cuenta): ?>
+                                            <option value="<?php echo $cuenta['num_cuenta']; ?>">
+                                                <?php echo "Cuenta Nº: " . $cuenta['num_cuenta'] . " (Saldo: $" . number_format($cuenta['saldo'], 2, ',', '.') . ")"; ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            <?php else: ?>
+                                <!-- Si es cajero o administrador, mantiene la búsqueda manual por ID -->
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">ID / Cédula del Cliente <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="input_id_cliente" name="id_cliente" placeholder="Escriba el ID del cliente" required onkeyup="buscarCuentasPorId(this.value)" onchange="buscarCuentasPorId(this.value)">
+                                    <div id="mensaje_cliente" class="form-text">Escriba el ID del cliente para cargar sus cuentas automáticamente.</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Número de Cuenta Asociada <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="select_cuenta" name="num_cuenta" required disabled>
+                                        <option value="" selected disabled>-- Escriba primero un ID de cliente válido --</option>
+                                    </select>
+                                </div>
+                            <?php endif; ?>
                             
                             <div class="row">
                                 <div class="col-md-6 mb-3">
@@ -140,6 +172,7 @@ try {
         </div>
     </div>
 
+    <?php if ($rol !== 'cliente'): ?>
     <script>
         var todasLasCuentas = <?php echo json_encode($cuentas); ?>;
 
@@ -175,6 +208,8 @@ try {
             }
         }
     </script>
+    <?php endif; ?>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
