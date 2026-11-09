@@ -6,6 +6,14 @@ require_once "conexionDB.php";
 
 $error = "";
 
+// Las contraseñas se guardan en texto simple (el administrador debe poder verlas).
+// Si quedó algún registro antiguo con hash bcrypt, también se acepta.
+function verificar_password(string $ingresada, string $guardada): bool {
+    if ($guardada === '' || $ingresada === '') return false; // sin contraseña = no entra
+    if (preg_match('/^\$2[aby]\$/', $guardada)) return password_verify($ingresada, $guardada);
+    return hash_equals($guardada, $ingresada);
+}
+
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $usuario_rol = $_POST['usuario'] ?? '';
     $password    = trim($_POST['password'] ?? '');
@@ -18,17 +26,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $empleado = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($empleado) {
-                $claveDinamica = strtolower($empleado['nomb_emp']) . "123";
-                $passBD = (string)($empleado['password'] ?? '');
-
-                $ok = ($passBD !== '' && ($password === $passBD || (strlen($passBD) > 20 && password_verify($password, $passBD))))
-                      || $password === $claveDinamica
-                      || $password === ($usuario_rol . "123")
-                      || $password === "admin123";
+                $ok = verificar_password($password, (string)($empleado['password'] ?? ''));
 
                 if ($ok) {
                     session_regenerate_id(true);
-                    $_SESSION['nombres']    = $empleado['nomb_emp'] . ' ' . $empleado['apelli_emp'];
+                    $_SESSION['nombres']    = $empleado['nombres'] . ' ' . $empleado['apellidos'];
                     $_SESSION['rol']        = strtolower($empleado['rol']);
                     $_SESSION['usuario_id'] = $empleado['id_empleado'];
                     header("Location: index.php");
@@ -45,20 +47,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $cliente = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($cliente) {
-                $hash = (string)($cliente['password'] ?? '');
-                $ok = false;
-
-                if ($hash !== '') {
-                    // Cliente con contraseña guardada (hash bcrypt)
-                    $ok = password_verify($password, $hash);
-                } else {
-                    // Cliente antiguo sin contraseña: entra con nombre+"123" y se le guarda el hash
-                    if ($password === strtolower($cliente['nomb_cli']) . "123") {
-                        $ok = true;
-                        $upd = $conexion->prepare("UPDATE clientes SET password = ? WHERE id_cliente = ?");
-                        $upd->execute([password_hash($password, PASSWORD_DEFAULT), $cliente['id_cliente']]);
-                    }
-                }
+                $ok = verificar_password($password, (string)($cliente['password'] ?? ''));
 
                 if ($ok) {
                     session_regenerate_id(true);
@@ -201,6 +190,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     <button type="submit" class="btn btn-custom w-100 mt-2">Iniciar Sesión</button>
                 </form>
             </div>
+        </div>
+    </div>
+</body>
+</html>
         </div>
     </div>
 </body>
