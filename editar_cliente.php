@@ -21,7 +21,7 @@ if ($rol === 'cliente') {
         $tel = $_POST['tel_cli'] ?? '';
         $dir = $_POST['dir_cli'] ?? '';
         try {
-            $stmt = $conexion->prepare("UPDATE clientes SET nomb_cli = ?, apelli_cli = ?, tel_cli = ?, dir_cli = ? WHERE id_cliente = ?");
+            $stmt = $conexion->prepare("UPDATE clientes SET nomb_cli = ?, apelli_cli = ?, telefono = ?, direccion = ? WHERE id_cliente = ?");
             $stmt->execute([$nomb, $apelli, $tel, $dir, $usuario_id]);
             $mensaje = "¡Tus datos han sido actualizados exitosamente!";
         } catch (PDOException $e) {
@@ -49,7 +49,7 @@ else {
             $tel = $_POST['tel_cli'] ?? '';
             $dir = $_POST['dir_cli'] ?? '';
             try {
-                $stmt = $conexion->prepare("UPDATE clientes SET nomb_cli = ?, apelli_cli = ?, tel_cli = ?, dir_cli = ? WHERE id_cliente = ?");
+                $stmt = $conexion->prepare("UPDATE clientes SET nomb_cli = ?, apelli_cli = ?, telefono = ?, direccion = ? WHERE id_cliente = ?");
                 $stmt->execute([$nomb, $apelli, $tel, $dir, $id_cliente]);
                 $mensaje = "¡Datos personales actualizados exitosamente!";
             } catch (PDOException $e) {
@@ -179,11 +179,11 @@ else {
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold">Teléfono</label>
-                        <input type="text" name="tel_cli" class="form-control" value="<?php echo htmlspecialchars($cliente['tel_cli'] ?? ''); ?>">
+                        <input type="text" name="tel_cli" class="form-control" value="<?php echo htmlspecialchars($cliente['telefono'] ?? ''); ?>">
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold">Dirección</label>
-                        <input type="text" name="dir_cli" class="form-control" value="<?php echo htmlspecialchars($cliente['dir_cli'] ?? ''); ?>">
+                        <input type="text" name="dir_cli" class="form-control" value="<?php echo htmlspecialchars($cliente['direccion'] ?? ''); ?>">
                     </div>
                     <button type="submit" class="btn btn-custom w-100 py-2">Guardar Cambios</button>
                 </form>
@@ -222,11 +222,11 @@ else {
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">Teléfono</label>
-                                    <input type="text" name="tel_cli" class="form-control" value="<?php echo htmlspecialchars($cliente_a_editar['tel_cli'] ?? ''); ?>">
+                                    <input type="text" name="tel_cli" class="form-control" value="<?php echo htmlspecialchars($cliente_a_editar['telefono'] ?? ''); ?>">
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">Dirección</label>
-                                    <input type="text" name="dir_cli" class="form-control" value="<?php echo htmlspecialchars($cliente_a_editar['dir_cli'] ?? ''); ?>">
+                                    <input type="text" name="dir_cli" class="form-control" value="<?php echo htmlspecialchars($cliente_a_editar['direccion'] ?? ''); ?>">
                                 </div>
                                 <button type="submit" class="btn btn-custom w-100 py-2">Guardar Cambios Personales</button>
                             </form>
@@ -329,7 +329,7 @@ else {
                                         <tr>
                                             <td>#<?php echo htmlspecialchars($cli['id_cliente']); ?></td>
                                             <td class="fw-bold"><?php echo htmlspecialchars($cli['nomb_cli'] . ' ' . $cli['apelli_cli']); ?></td>
-                                            <td><?php echo htmlspecialchars($cli['tel_cli'] ?? 'N/A'); ?></td>
+                                            <td><?php echo htmlspecialchars($cli['telefono'] ?? 'N/A'); ?></td>
                                             <td>
                                                 <?php if (!empty($cli['num_cuenta'])): ?>
                                                     <span class="badge bg-secondary"><?php echo htmlspecialchars($cli['num_cuenta']); ?></span>
