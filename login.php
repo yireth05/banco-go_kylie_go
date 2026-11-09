@@ -1,9 +1,6 @@
 <?php
 // login.php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
+ob_start(); // evita "headers already sent" por salida accidental
 session_start();
 require_once "conexionDB.php";
 
@@ -16,62 +13,62 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     try {
         if ($usuario_rol === 'administrador' || $usuario_rol === 'cajero') {
-            // Consulta en la tabla empleados según el rol
-            $stmt = $conexion->prepare("
-                SELECT * FROM empleados 
-                WHERE LOWER(rol) = :rol AND id_empleado = :cedula
-            ");
-            $stmt->execute([
-                ':rol'    => $usuario_rol,
-                ':cedula' => $cedula
-            ]);
+            $stmt = $conexion->prepare("SELECT * FROM empleados WHERE LOWER(rol) = :rol AND id_empleado = :cedula");
+            $stmt->execute([':rol' => $usuario_rol, ':cedula' => $cedula]);
             $empleado = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($empleado) {
                 $claveDinamica = strtolower($empleado['nomb_emp']) . "123";
-                
-                if ($password === ($empleado['password'] ?? '') || 
-                    $password === $claveDinamica || 
-                    $password === ($usuario_rol . "123") || 
-                    $password === "admin123") {
-                    
+                $passBD = (string)($empleado['password'] ?? '');
+
+                $ok = ($passBD !== '' && ($password === $passBD || (strlen($passBD) > 20 && password_verify($password, $passBD))))
+                      || $password === $claveDinamica
+                      || $password === ($usuario_rol . "123")
+                      || $password === "admin123";
+
+                if ($ok) {
+                    session_regenerate_id(true);
                     $_SESSION['nombres']    = $empleado['nomb_emp'] . ' ' . $empleado['apelli_emp'];
                     $_SESSION['rol']        = strtolower($empleado['rol']);
                     $_SESSION['usuario_id'] = $empleado['id_empleado'];
                     header("Location: index.php");
                     exit;
-                } else {
-                    $error = "Contraseña incorrecta para el perfil de " . ucfirst($usuario_rol) . ".";
                 }
+                $error = "Contraseña incorrecta para el perfil de " . ucfirst($usuario_rol) . ".";
             } else {
                 $error = "La cédula ingresada no corresponde a un " . ucfirst($usuario_rol) . ".";
             }
 
         } elseif ($usuario_rol === 'cliente') {
-            // Consulta en la tabla clientes validando id_cliente
             $stmt = $conexion->prepare("SELECT * FROM clientes WHERE id_cliente = :cedula");
             $stmt->execute([':cedula' => $cedula]);
             $cliente = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($cliente) {
-                $claveDinamica = strtolower($cliente['nomb_cli']) . "123";
-                
-                // Obtenemos el hash de la BD de forma segura
-                $hashAlmacenado = $cliente['password'] ?? '';
-                
-                // Verificamos el hash con password_verify (LIMPIO, SIN SÍMBOLO '$' ADELANTE)
-                $validoPassword = (!empty($hashAlmacenado) && password_verify($password, $hashAlmacenado));
+                $hash = (string)($cliente['password'] ?? '');
+                $ok = false;
 
-                if ($validoPassword || $password === $claveDinamica || $password === "cliente123") {
-                    
+                if ($hash !== '') {
+                    // Cliente con contraseña guardada (hash bcrypt)
+                    $ok = password_verify($password, $hash);
+                } else {
+                    // Cliente antiguo sin contraseña: entra con nombre+"123" y se le guarda el hash
+                    if ($password === strtolower($cliente['nomb_cli']) . "123") {
+                        $ok = true;
+                        $upd = $conexion->prepare("UPDATE clientes SET password = ? WHERE id_cliente = ?");
+                        $upd->execute([password_hash($password, PASSWORD_DEFAULT), $cliente['id_cliente']]);
+                    }
+                }
+
+                if ($ok) {
+                    session_regenerate_id(true);
                     $_SESSION['nombres']    = $cliente['nomb_cli'] . ' ' . $cliente['apelli_cli'];
                     $_SESSION['rol']        = 'cliente';
                     $_SESSION['usuario_id'] = $cliente['id_cliente'];
                     header("Location: index.php");
                     exit;
-                } else {
-                    $error = "Contraseña incorrecta para el cliente.";
                 }
+                $error = "Contraseña incorrecta para el cliente.";
             } else {
                 $error = "La cédula ingresada no se encuentra registrada en la base de datos.";
             }
