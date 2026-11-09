@@ -352,9 +352,8 @@ ALTER TABLE public.tipo_cuentas OWNER TO postgres;
 CREATE TABLE public.tipo_transacciones (
     cod_tipo_transaccion integer NOT NULL,
     nomb_tipo_transaccion character varying(50) NOT NULL,
-    CONSTRAINT ck_tipo_transacciones_nomb CHECK (((nomb_tipo_transaccion)::text = ANY (ARRAY[('Depósito'::character varying)::text, ('Retiro'::character varying)::text])))
+    CONSTRAINT ck_tipo_transacciones_nomb CHECK (nomb_tipo_transaccion IN ('Depósito', 'Retiro', 'Abono a Préstamo'))
 );
-
 
 ALTER TABLE public.tipo_transacciones OWNER TO postgres;
 
@@ -540,6 +539,9 @@ COPY public.tipo_transacciones (cod_tipo_transaccion, nomb_tipo_transaccion) FRO
 1	Depósito
 2	Retiro
 \.
+INSERT INTO public.tipo_transacciones (cod_tipo_transaccion, nomb_tipo_transaccion) 
+VALUES (3, 'Abono a Préstamo') 
+ON CONFLICT DO NOTHING;
 
 
 
