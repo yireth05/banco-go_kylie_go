@@ -117,16 +117,25 @@ $$;
 ALTER FUNCTION public.fn_validar_transaccion() OWNER TO postgres;
 
 --FUNCION REALIZAR TRANSACCION
-
-CREATE FUNCTION public.realizar_transaccion(p_id_cliente character varying, p_num_cuenta character varying, p_cod_tipo integer, p_cod_forma integer, p_monto numeric, p_id_cajero integer DEFAULT NULL::integer, p_id_banca_virtual integer DEFAULT NULL::integer) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
+CREATE FUNCTION public.realizar_transaccion(
+    p_id_cliente character varying, 
+    p_num_cuenta character varying, 
+    p_cod_tipo integer, 
+    p_cod_forma integer, 
+    p_monto numeric, 
+    p_id_cajero integer DEFAULT NULL::integer, 
+    p_id_banca_virtual integer DEFAULT NULL::integer,
+    p_id_prestamo character varying DEFAULT NULL::character varying
+) RETURNS integer
+LANGUAGE plpgsql
+AS $$
 DECLARE
     v_nomb_tipo  VARCHAR(50);
     v_saldo      NUMERIC(15,2);
     v_id_trans   INT;
+    v_saldo_pend NUMERIC(15,2);
 BEGIN
-    -- 1) Validar existencia de códigos ANTES de cualquier búsqueda completa o UPDATE
+    -- 1) Validaciones básicas
     IF NOT EXISTS (SELECT 1 FROM clientes WHERE id_cliente = p_id_cliente) THEN
         RAISE EXCEPTION 'El cliente % no existe', p_id_cliente USING ERRCODE = 'BK002';
     END IF;
@@ -135,10 +144,8 @@ BEGIN
         RAISE EXCEPTION 'La cuenta % no existe', p_num_cuenta USING ERRCODE = 'BK001';
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM cuentas
-                   WHERE num_cuenta = p_num_cuenta AND id_cliente = p_id_cliente) THEN
-        RAISE EXCEPTION 'La cuenta % no pertenece al cliente %', p_num_cuenta, p_id_cliente
-              USING ERRCODE = 'BK007';
+    IF NOT EXISTS (SELECT 1 FROM cuentas WHERE num_cuenta = p_num_cuenta AND id_cliente = p_id_cliente) THEN
+        RAISE EXCEPTION 'La cuenta % no pertenece al cliente %', p_num_cuenta, p_id_cliente USING ERRCODE = 'BK007';
     END IF;
 
     SELECT nomb_tipo_transaccion INTO v_nomb_tipo
@@ -151,33 +158,47 @@ BEGIN
         RAISE EXCEPTION 'La forma de transacción % no existe', p_cod_forma USING ERRCODE = 'BK004';
     END IF;
 
-    -- 2) Origen: exactamente uno (cajero o banca virtual)
-    IF (p_id_cajero IS NULL AND p_id_banca_virtual IS NULL)
-       OR (p_id_cajero IS NOT NULL AND p_id_banca_virtual IS NOT NULL) THEN
+    IF (p_id_cajero IS NULL AND p_id_banca_virtual IS NULL) OR (p_id_cajero IS NOT NULL AND p_id_banca_virtual IS NOT NULL) THEN
         RAISE EXCEPTION 'Debe indicar cajero o banca virtual (solo uno)' USING ERRCODE = 'BK006';
     END IF;
 
-    -- 3) Monto positivo (el trigger BEFORE también lo valida)
     IF p_monto IS NULL OR p_monto <= 0 THEN
         RAISE EXCEPTION 'El monto debe ser mayor que cero' USING ERRCODE = 'BK010';
     END IF;
 
-    -- 4) Bloquear la fila de la cuenta para evitar condiciones de carrera
     SELECT saldo INTO v_saldo FROM cuentas WHERE num_cuenta = p_num_cuenta FOR UPDATE;
 
-    -- 5) Aplicar la operación
+    -- 2) Aplicar operación según el tipo
     IF v_nomb_tipo = 'Retiro' THEN
         IF v_saldo >= p_monto THEN
             UPDATE cuentas SET saldo = saldo - p_monto WHERE num_cuenta = p_num_cuenta;
         ELSE
-            RAISE EXCEPTION 'Saldo insuficiente: disponible %, solicitado %', v_saldo, p_monto
-                  USING ERRCODE = 'BK005';
+            RAISE EXCEPTION 'Saldo insuficiente: disponible %, solicitado %', v_saldo, p_monto USING ERRCODE = 'BK005';
+        END IF;
+    ELSIF v_nomb_tipo = 'Abono a Préstamo' THEN
+        IF v_saldo >= p_monto THEN
+            IF p_id_prestamo IS NULL THEN
+                RAISE EXCEPTION 'Debe especificar un préstamo para el abono' USING ERRCODE = 'BK008';
+            END IF;
+            SELECT saldo_pendiente INTO v_saldo_pend FROM prestamos WHERE id_prestamo = p_id_prestamo FOR UPDATE;
+            IF NOT FOUND THEN
+                RAISE EXCEPTION 'El préstamo % no existe', p_id_prestamo USING ERRCODE = 'BK009';
+            END IF;
+            IF p_monto > v_saldo_pend THEN
+                RAISE EXCEPTION 'El monto supera el saldo pendiente del préstamo ($%)', v_saldo_pend USING ERRCODE = 'BK012';
+            END IF;
+
+            -- Descontar de la cuenta y reducir el saldo del préstamo
+            UPDATE cuentas SET saldo = saldo - p_monto WHERE num_cuenta = p_num_cuenta;
+            UPDATE prestamos SET saldo_pendiente = saldo_pendiente - p_monto WHERE id_prestamo = p_id_prestamo;
+        ELSE
+            RAISE EXCEPTION 'Saldo insuficiente en la cuenta para el abono: disponible %, solicitado %', v_saldo, p_monto USING ERRCODE = 'BK005';
         END IF;
     ELSE  -- Depósito
         UPDATE cuentas SET saldo = saldo + p_monto WHERE num_cuenta = p_num_cuenta;
     END IF;
 
-    -- 6) Registrar la transacción
+    -- 3) Registrar la transacción
     INSERT INTO transacciones (monto_transaccion, num_cuenta_origen, cod_tipo_transaccion,
                                cod_forma_transaccion, id_cajero, id_banca_virtual)
     VALUES (p_monto, p_num_cuenta, p_cod_tipo, p_cod_forma, p_id_cajero, p_id_banca_virtual)
@@ -186,6 +207,7 @@ BEGIN
     RETURN v_id_trans;
 END;
 $$;
+
 
 ALTER FUNCTION public.realizar_transaccion(p_id_cliente character varying, p_num_cuenta character varying, p_cod_tipo integer, p_cod_forma integer, p_monto numeric, p_id_cajero integer, p_id_banca_virtual integer) OWNER TO postgres;
 
