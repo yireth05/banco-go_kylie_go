@@ -19,14 +19,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $error = "Faltan datos obligatorios por enviar, por favor ingresar datos faltantes.";
     } else {
         try {
+            $password_hash = password_hash($password, PASSWORD_DEFAULT);
             
             $sentencia = $conexion->prepare("INSERT INTO clientes (id_cliente, nomb_cli, apelli_cli, direccion, telefono, correo) VALUES (?, ?, ?, ?, ?, ?)");
             $resultado = $sentencia->execute([$id_cliente, $nomb_cli, $apelli_cli, $direccion, $telefono, $correo]);
     
             if ($resultado) {
-                
-                $sql_rol = sprintf('CREATE ROLE "%s" WITH LOGIN PASSWORD %s', $id_cliente, $conexion->quote($password_temporal));
-                $conexion->exec($sql_rol);
                 
                 $mensaje = "¡Cliente registrado exitosamente en el sistema!";
             }
