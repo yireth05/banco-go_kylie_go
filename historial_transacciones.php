@@ -1,5 +1,4 @@
 <?php
-// estado_cuentas.php - Historial de Transferencias y Movimientos
 session_start();
 require_once 'conexionDB.php';
 
@@ -15,7 +14,6 @@ $error = "";
 
 try {
     if ($rol === 'cliente' && $id_cliente) {
-        // Consulta el historial de transacciones filtrado por las cuentas del cliente actual
         $stmt = $conexion->prepare("
             SELECT t.fecha_transaccion, t.monto_transaccion, t.num_cuenta_origen, 
                    tt.nomb_tipo_transaccion, ft.nomb_forma_transaccion,
@@ -30,7 +28,7 @@ try {
         ");
         $stmt->execute([':cli' => $id_cliente]);
     } else {
-        // Si es administrador o cajero, muestra el historial completo de todas las transacciones del banco
+
         $stmt = $conexion->query("
             SELECT t.fecha_transaccion, t.monto_transaccion, t.num_cuenta_origen, 
                    tt.nomb_tipo_transaccion, ft.nomb_forma_transaccion,
