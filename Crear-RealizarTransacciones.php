@@ -17,48 +17,42 @@ $error = "";
 define('LIMITE_MAX_CLIENTE_WEB', 10000000.00); 
 define('UMBRAL_DEPOSITO_CAJERO', 50000000.00);  
 
-// Cargar cuentas y verificar si tiene préstamos
 $cuentas = [];
-$prestamos_cliente = [];
-$tiene_prestamos = false;
+$tipos = [];
+$formas = [];
+$todos_prestamos = [];
 
 try {
+    // 1. Cargar cuentas según el rol
     if ($rol === 'cliente' && $id_cliente) {
-        // Cargar cuentas del cliente
-        $stmt = $conexion->prepare("SELECT num_cuenta, saldo FROM cuentas WHERE id_cliente = :cli ORDER BY num_cuenta");
+        $stmt = $conexion->prepare("SELECT num_cuenta, saldo, id_cliente FROM cuentas WHERE id_cliente = :cli ORDER BY num_cuenta");
         $stmt->execute([':cli' => $id_cliente]);
         $cuentas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Cargar préstamos activos del cliente
-        $stmtPres = $conexion->prepare("SELECT id_prestamo, saldo_pendiente FROM prestamos WHERE id_cliente = :cli AND saldo_pendiente > 0 ORDER BY id_prestamo");
-        $stmtPres->execute([':cli' => $id_cliente]);
-        $prestamos_cliente = $stmtPres->fetchAll(PDO::FETCH_ASSOC);
-        $tiene_prestamos = !empty($prestamos_cliente);
-
-        // REGLA: Si el cliente NO tiene préstamos, filtramos la opción de abono a préstamo (cod_tipo_transaccion = 3)
-        if ($tiene_prestamos) {
-            $stmtTipos = $conexion->prepare("SELECT * FROM tipo_transacciones WHERE LOWER(nomb_tipo_transaccion) NOT LIKE '%dep%' ORDER BY cod_tipo_transaccion");
-        } else {
-            // Excluir depósitos y también excluir abonos a préstamos si no tiene ninguno
-            $stmtTipos = $conexion->prepare("SELECT * FROM tipo_transacciones WHERE LOWER(nomb_tipo_transaccion) NOT LIKE '%dep%' AND cod_tipo_transaccion != 3 ORDER BY cod_tipo_transaccion");
-        }
+        // Cliente no puede hacer depósitos directos web
+        $stmtTipos = $conexion->prepare("SELECT * FROM tipo_transacciones WHERE LOWER(nomb_tipo_transaccion) NOT LIKE '%dep%' ORDER BY cod_tipo_transaccion");
         $stmtTipos->execute();
         $tipos = $stmtTipos->fetchAll(PDO::FETCH_ASSOC);
-
     } else {
-        // Si es cajero o administrador, cargamos todo de manera global
-        $cuentas = $conexion->query("SELECT num_cuenta, saldo FROM cuentas ORDER BY num_cuenta")->fetchAll(PDO::FETCH_ASSOC);
-        $tipos = $conexion->query("SELECT * FROM tipo_transacciones ORDER BY cod_tipo_transaccion")->fetchAll(PDO::FETCH_ASSOC);
-        $prestamos_cliente = $conexion->query("SELECT id_prestamo, saldo_pendiente, id_cliente FROM prestamos WHERE saldo_pendiente > 0 ORDER BY id_prestamo")->fetchAll(PDO::FETCH_ASSOC);
-        $tiene_prestamos = true; // El cajero/admin puede ver todas las opciones
+        $stmt = $conexion->query("SELECT num_cuenta, saldo, id_cliente FROM cuentas ORDER BY num_cuenta");
+        $cuentas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $stmtTipos = $conexion->query("SELECT * FROM tipo_transacciones ORDER BY cod_tipo_transaccion");
+        $tipos = $stmtTipos->fetchAll(PDO::FETCH_ASSOC);
     }
     
+    // 2. Cargar formas de transacción
     $formas = $conexion->query("SELECT * FROM formas_transacciones ORDER BY cod_forma_transaccion")->fetchAll(PDO::FETCH_ASSOC);
+
+    // 3. Cargar TODOS los préstamos activos mapeados por cliente para usarlos dinámicamente en JavaScript
+    $stmtPres = $conexion->query("SELECT id_prestamo, id_cliente, saldo_pendiente FROM prestamos WHERE saldo_pendiente > 0");
+    $todos_prestamos = $stmtPres->fetchAll(PDO::FETCH_ASSOC);
+
 } catch (PDOException $e) {
     $error = "Error al obtener datos: " . $e->getMessage();
 }
 
-// Procesar transacción con protocolo estricto
+// Procesar transacción
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $num_cuenta = $_POST['num_cuenta_origen'] ?? '';
     $monto = floatval($_POST['monto_transaccion'] ?? 0);
@@ -66,7 +60,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $cod_forma = intval($_POST['cod_forma_transaccion'] ?? 1);
     $id_prestamo_abono = $_POST['id_prestamo'] ?? null;
 
-    // 1. Obtener el tipo de transacción a realizar
     $stmtNombreTipo = $conexion->prepare("SELECT nomb_tipo_transaccion FROM tipo_transacciones WHERE cod_tipo_transaccion = :tipo");
     $stmtNombreTipo->execute([':tipo' => $cod_tipo]);
     $tipoRow = $stmtNombreTipo->fetch(PDO::FETCH_ASSOC);
@@ -76,7 +69,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $esRetiro = (strpos($nombreTipo, 'retiro') !== false || $cod_tipo == 2);
     $esAbonoPrestamo = (strpos($nombreTipo, 'abono') !== false || strpos($nombreTipo, 'préstamo') !== false || $cod_tipo == 3);
 
-    // 2. PROTOCOLO DE SEGURIDAD POR ROLES Y VALIDACIONES
     if ($monto <= 0) {
         $error = "El monto ingresado debe ser mayor a cero ($0.00).";
     } elseif ($rol === 'cliente' && $esDeposito) {
@@ -95,15 +87,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = "La cuenta seleccionada no existe.";
             } else {
                 $saldoActual = floatval($cuentaData['saldo']);
+                $idClienteCuenta = $cuentaData['id_cliente'];
 
                 $prestamoData = null;
                 if ($esAbonoPrestamo) {
-                    $stmtPCheck = $conexion->prepare("SELECT * FROM prestamos WHERE id_prestamo = :pres");
-                    $stmtPCheck->execute([':pres' => $id_prestamo_abono]);
+                    $stmtPCheck = $conexion->prepare("SELECT * FROM prestamos WHERE id_prestamo = :pres AND id_cliente = :cli");
+                    $stmtPCheck->execute([':pres' => $id_prestamo_abono, ':cli' => $idClienteCuenta]);
                     $prestamoData = $stmtPCheck->fetch(PDO::FETCH_ASSOC);
 
                     if (!$prestamoData) {
-                        $error = "El préstamo seleccionado no existe.";
+                        $error = "El préstamo seleccionado no pertenece al titular de la cuenta o no existe.";
                     } elseif ($monto > $saldoActual) {
                         $error = "Fondos insuficientes en la cuenta para realizar el abono. Saldo disponible: $" . number_format($saldoActual, 2);
                     } elseif ($monto > floatval($prestamoData['saldo_pendiente'])) {
@@ -125,7 +118,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $conexion->beginTransaction();
 
-                    // Registrar transacción
                     $stmtIns = $conexion->prepare("
                         INSERT INTO transacciones (
                             fecha_transaccion, monto_transaccion, num_cuenta_origen, 
@@ -142,14 +134,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ':banca'   => $id_banca_virtual
                     ]);
 
-                    // Actualizar saldo de cuenta origen
                     $stmtUpd = $conexion->prepare("UPDATE cuentas SET saldo = :nuevo_saldo WHERE num_cuenta = :cuenta");
                     $stmtUpd->execute([
                         ':nuevo_saldo' => $nuevoSaldoCuenta,
                         ':cuenta'      => $num_cuenta
                     ]);
 
-                    // Si es abono a préstamo, actualizar la tabla prestamos
                     if ($esAbonoPrestamo && $prestamoData) {
                         $nuevoSaldoPrestamo = floatval($prestamoData['saldo_pendiente']) - $monto;
                         $stmtUpdPres = $conexion->prepare("UPDATE prestamos SET saldo_pendiente = :nuevo_saldo_pres WHERE id_prestamo = :pres");
@@ -168,15 +158,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $mensaje = "{$accionTexto}. El nuevo saldo de la cuenta <strong>{$num_cuenta}</strong> es: <strong>$" . number_format($nuevoSaldoCuenta, 2) . "</strong>.";
                     }
 
-                    // Recargar datos actualizados
+                    // Recargar cuentas
                     if ($rol === 'cliente' && $id_cliente) {
-                        $stmt = $conexion->prepare("SELECT num_cuenta, saldo FROM cuentas WHERE id_cliente = :cli ORDER BY num_cuenta");
+                        $stmt = $conexion->prepare("SELECT num_cuenta, saldo, id_cliente FROM cuentas WHERE id_cliente = :cli ORDER BY num_cuenta");
                         $stmt->execute([':cli' => $id_cliente]);
                         $cuentas = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                        $stmtPres = $conexion->prepare("SELECT id_prestamo, saldo_pendiente FROM prestamos WHERE id_cliente = :cli AND saldo_pendiente > 0 ORDER BY id_prestamo");
-                        $stmtPres->execute([':cli' => $id_cliente]);
-                        $prestamos_cliente = $stmtPres->fetchAll(PDO::FETCH_ASSOC);
+                    } else {
+                        $stmt = $conexion->query("SELECT num_cuenta, saldo, id_cliente FROM cuentas ORDER BY num_cuenta");
+                        $cuentas = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     }
                 }
             }
@@ -241,43 +230,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label class="form-label fw-bold">Titular / Operador</label>
                     <input type="text" class="form-control" value="<?php echo htmlspecialchars($_SESSION['nombres'] ?? 'Usuario'); ?> (Rol: <?php echo strtoupper($rol); ?>)" disabled>
                 </div>
+
+                <!-- SELECT DE CUENTA ORIGEN CON EL EVENTO ONCHANGE -->
                 <div class="mb-3">
                     <label class="form-label fw-bold">Seleccione Cuenta Origen *</label>
-                    <select name="num_cuenta_origen" class="form-select" required>
+                    <select name="num_cuenta_origen" id="num_cuenta_origen" class="form-select" required onchange="filtrarOpcionesPorCuenta(this)">
                         <option value="" disabled selected>-- Seleccione una cuenta --</option>
                         <?php foreach ($cuentas as $cta): ?>
-                            <option value="<?php echo htmlspecialchars($cta['num_cuenta']); ?>">
+                            <option value="<?php echo htmlspecialchars($cta['num_cuenta']); ?>" data-cliente="<?php echo htmlspecialchars($cta['id_cliente']); ?>">
                                 <?php echo htmlspecialchars($cta['num_cuenta']); ?> (Saldo: $<?php echo number_format($cta['saldo'], 2); ?>)
                             </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
+
+                <!-- SELECT DE TIPO DE TRANSACCIÓN (DINÁMICO) -->
                 <div class="mb-3">
                     <label class="form-label fw-bold">Tipo de Transacción *</label>
                     <select name="cod_tipo_transaccion" id="cod_tipo_transaccion" class="form-select" required onchange="verificarTipoTransaccion(this)">
-                        <option value="" disabled selected>-- Seleccione tipo --</option>
+                        <option value="" disabled selected>-- Primero seleccione una cuenta --</option>
                         <?php foreach ($tipos as $t): ?>
                             <option value="<?php echo $t['cod_tipo_transaccion']; ?>" data-nombre="<?php echo strtolower($t['nomb_tipo_transaccion']); ?>">
                                 <?php echo htmlspecialchars($t['nomb_tipo_transaccion']); ?>
                             </option>
                         <?php endforeach; ?>
+                        <option value="3" data-nombre="abono a préstamo" id="opcion_abono_prestamo" class="d-none">Abono a Préstamo</option>
                     </select>
                 </div>
 
-                <!-- SECCIÓN DINÁMICA: SELECCIÓN DE PRÉSTAMO (SOLO SI TIENE PRÉSTAMOS ACTIVOS) -->
-                <?php if ($tiene_prestamos && !empty($prestamos_cliente)): ?>
+                <!-- SECCIÓN DINÁMICA: SELECCIÓN DE PRÉSTAMO -->
                 <div class="mb-3 d-none" id="seccion_prestamo">
                     <label class="form-label fw-bold text-primary">Seleccione el Préstamo a Abonar *</label>
                     <select name="id_prestamo" id="id_prestamo" class="form-select">
                         <option value="" disabled selected>-- Seleccione un préstamo activo --</option>
-                        <?php foreach ($prestamos_cliente as $pres): ?>
-                            <option value="<?php echo htmlspecialchars($pres['id_prestamo']); ?>">
-                                Préstamo #<?php echo htmlspecialchars($pres['id_prestamo']); ?> (Saldo Pendiente: $<?php echo number_format($pres['saldo_pendiente'], 2); ?>)
-                            </option>
-                        <?php endforeach; ?>
                     </select>
                 </div>
-                <?php endif; ?>
 
                 <div class="mb-3">
                     <label class="form-label fw-bold">Forma de Transacción *</label>
@@ -299,8 +286,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- SCRIPT JS PARA LA SINCRONIZACIÓN AUTOMÁTICA -->
     <script>
+        // Mapeo seguro de préstamos por ID de cliente desde PHP
+        const prestamosPorCliente = <?php echo json_encode($todos_prestamos); ?>;
+
+        function filtrarOpcionesPorCuenta(selectCuenta) {
+            const optionSeleccionada = selectCuenta.options[selectCuenta.selectedIndex];
+            const idCliente = optionSeleccionada.getAttribute('data-cliente');
+            
+            const opcionAbono = document.getElementById('opcion_abono_prestamo');
+            const selectPrestamo = document.getElementById('id_prestamo');
+            const seccionPrestamo = document.getElementById('seccion_prestamo');
+            const selectTipo = document.getElementById('cod_tipo_transaccion');
+
+            // Filtrar los préstamos que pertenecen al cliente de esta cuenta
+            const prestamosDelCliente = prestamosPorCliente.filter(p => p.id_cliente === idCliente);
+
+            // Resetear sección de préstamo y tipo al cambiar de cuenta
+            selectPrestamo.innerHTML = '<option value="" disabled selected>-- Seleccione un préstamo activo --</option>';
+            seccionPrestamo.classList.add('d-none');
+            selectPrestamo.removeAttribute('required');
+
+            if (prestamosDelCliente.length > 0) {
+                // Mostrar la opción de Abono a Préstamo en el select de tipos
+                opcionAbono.classList.remove('d-none');
+
+                // Poblar el select de préstamos de este cliente específico
+                prestamosDelCliente.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.id_prestamo;
+                    opt.textContent = `Préstamo #${p.id_prestamo} (Saldo Pendiente: $${Number(p.saldo_pendiente).toLocaleString('es-CO', {minimumFractionDigits: 2})})`;
+                    selectPrestamo.appendChild(opt);
+                });
+            } else {
+                // Ocultar la opción si el dueño de esta cuenta no tiene préstamos
+                opcionAbono.classList.add('d-none');
+                if (selectTipo.value === '3') {
+                    selectTipo.value = ''; // Desseleccionar si estaba marcado
+                }
+            }
+        }
+
         function verificarTipoTransaccion(selectElement) {
             const selectedOption = selectElement.options[selectElement.selectedIndex];
             const nombreTipo = selectedOption.getAttribute('data-nombre') || '';
@@ -308,17 +335,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             const seccionPrestamo = document.getElementById('seccion_prestamo');
             const selectPrestamo = document.getElementById('id_prestamo');
 
-            if (seccionPrestamo && selectPrestamo) {
-                if (codTipo === '3' || nombreTipo.includes('abono') || nombreTipo.includes('préstamo')) {
-                    seccionPrestamo.classList.remove('d-none');
-                    selectPrestamo.setAttribute('required', 'true');
-                } else {
-                    seccionPrestamo.classList.add('d-none');
-                    selectPrestamo.removeAttribute('required');
-                    selectPrestamo.value = '';
-                }
+            if (codTipo === '3' || nombreTipo.includes('abono') || nombreTipo.includes('préstamo')) {
+                seccionPrestamo.classList.remove('d-none');
+                selectPrestamo.setAttribute('required', 'true');
+            } else {
+                seccionPrestamo.classList.add('d-none');
+                selectPrestamo.removeAttribute('required');
+                selectPrestamo.value = '';
             }
         }
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
