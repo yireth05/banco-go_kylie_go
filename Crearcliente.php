@@ -23,6 +23,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     if ($id_cliente === '' || $nomb_cli === '' || $apelli_cli === '' || $password === '') {
         $error = "Faltan datos obligatorios por enviar, por favor ingresar datos faltantes.";
+    } elseif (strlen($password) < 4 || strlen($password) > 20) {
+        $error = "La contraseña debe tener entre 4 y 20 caracteres.";
     } elseif (!preg_match('/^[0-9]+$/', $telefono)) {
         $error = "Error: El número de teléfono solo debe contener dígitos numéricos y no puede incluir caracteres especiales.";
     } else {
@@ -30,7 +32,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             // Por si la tabla se creó con un SQL viejo sin la columna password
             $conexion->exec("ALTER TABLE clientes ADD COLUMN IF NOT EXISTS password character varying(255)");
 
-            $password_hash = password_hash($password, PASSWORD_DEFAULT);
             $sentencia = $conexion->prepare(
                 "INSERT INTO clientes (id_cliente, nomb_cli, apelli_cli, direccion, telefono, correo, password)
                  VALUES (:id, :nom, :ape, :dir, :tel, :cor, :pass)"
@@ -42,7 +43,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 ':dir'  => $direccion !== '' ? $direccion : null,
                 ':tel'  => $telefono,
                 ':cor'  => $correo !== '' ? $correo : null,
-                ':pass' => $password_hash,
+                ':pass' => $password,
             ]);
 
             // Verificar que realmente quedó guardada
@@ -50,7 +51,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $chk->execute([$id_cliente]);
             $guardada = (string)$chk->fetchColumn();
 
-            if ($guardada !== '' && password_verify($password, $guardada)) {
+            if ($guardada !== '' && hash_equals($guardada, $password)) {
                 $mensaje = "¡Cliente registrado exitosamente con su contraseña!";
             } else {
                 $error = "El cliente se creó pero la contraseña no quedó guardada. Revisa la columna password de la tabla clientes.";
@@ -108,7 +109,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
                 <div class="mb-3">
                     <label for="password" class="form-label fw-bold">Contraseña de Acceso *</label>
-                    <input type="password" class="form-control" id="password" name="password" required placeholder="Crea una contraseña segura para el cliente">
+                    <input type="text" class="form-control" id="password" name="password" required minlength="4" maxlength="20" autocomplete="off" placeholder="Contraseña corta (4 a 20 caracteres)">
                 </div> 
 
                 <div class="mb-3">
