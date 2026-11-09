@@ -12,20 +12,53 @@ $rol = $_SESSION['rol'];
 $error = "";
 $mensaje = "";
 
+// Teléfono: solo dígitos (7 a 15). Devuelve mensaje de error o null si es válido.
+function validar_telefono(string $tel): ?string {
+    if (!preg_match('/^[0-9]+$/', $tel)) {
+        return "El teléfono solo puede contener números (sin espacios, guiones ni otros caracteres).";
+    }
+    if (strlen($tel) < 7 || strlen($tel) > 15) {
+        return "El teléfono debe tener entre 7 y 15 dígitos.";
+    }
+    return null;
+}
+
+// Genera un número de cuenta que NO exista todavía en la tabla cuentas.
+function generar_num_cuenta(PDO $db): string {
+    $chk = $db->prepare("SELECT 1 FROM cuentas WHERE num_cuenta = ?");
+    for ($i = 0; $i < 20; $i++) {
+        $num = '99' . random_int(10000000, 99999999);
+        $chk->execute([$num]);
+        if (!$chk->fetchColumn()) return $num;
+    }
+    throw new RuntimeException("No se pudo generar un número de cuenta único. Intenta de nuevo.");
+}
+
 // Si es un cliente solo ve sus propios datos
 if ($rol === 'cliente') {
     $usuario_id = $_SESSION['usuario_id'] ?? $_SESSION['id_cliente'] ?? null;
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $nomb = $_POST['nomb_cli'] ?? '';
         $apelli = $_POST['apelli_cli'] ?? '';
-        $tel = $_POST['tel_cli'] ?? '';
+        $tel = trim($_POST['tel_cli'] ?? '');
         $dir = $_POST['dir_cli'] ?? '';
-        try {
-            $stmt = $conexion->prepare("UPDATE clientes SET nomb_cli = ?, apelli_cli = ?, telefono = ?, direccion = ? WHERE id_cliente = ?");
-            $stmt->execute([$nomb, $apelli, $tel, $dir, $usuario_id]);
-            $mensaje = "¡Tus datos han sido actualizados exitosamente!";
-        } catch (PDOException $e) {
-            $error = "Error al actualizar: " . $e->getMessage();
+        $nueva_pass = trim($_POST['nueva_password'] ?? '');
+        if ($err_tel = validar_telefono($tel)) {
+            $error = $err_tel;
+        } elseif ($nueva_pass !== '' && (strlen($nueva_pass) < 4 || strlen($nueva_pass) > 20)) {
+            $error = "La nueva contraseña debe tener entre 4 y 20 caracteres.";
+        } else {
+            try {
+                $stmt = $conexion->prepare("UPDATE clientes SET nomb_cli = ?, apelli_cli = ?, telefono = ?, direccion = ? WHERE id_cliente = ?");
+                $stmt->execute([$nomb, $apelli, $tel, $dir, $usuario_id]);
+                if ($nueva_pass !== '') {
+                    $up = $conexion->prepare("UPDATE clientes SET password = ? WHERE id_cliente = ?");
+                    $up->execute([$nueva_pass, $usuario_id]);
+                }
+                $mensaje = "¡Tus datos han sido actualizados exitosamente!" . ($nueva_pass !== '' ? " Tu contraseña fue cambiada." : "");
+            } catch (PDOException $e) {
+                $error = "Error al actualizar: " . $e->getMessage();
+            }
         }
     }
     try {
@@ -46,30 +79,38 @@ else {
         if ($accion === 'actualizar_datos') {
             $nomb = $_POST['nomb_cli'] ?? '';
             $apelli = $_POST['apelli_cli'] ?? '';
-            $tel = $_POST['tel_cli'] ?? '';
+            $tel = trim($_POST['tel_cli'] ?? '');
             $dir = $_POST['dir_cli'] ?? '';
-            try {
-                $stmt = $conexion->prepare("UPDATE clientes SET nomb_cli = ?, apelli_cli = ?, telefono = ?, direccion = ? WHERE id_cliente = ?");
-                $stmt->execute([$nomb, $apelli, $tel, $dir, $id_cliente]);
-                $mensaje = "¡Datos personales actualizados exitosamente!";
-            } catch (PDOException $e) {
-                $error = "Error al actualizar los datos: " . $e->getMessage();
+            if ($err_tel = validar_telefono($tel)) {
+                $error = $err_tel;
+            } else {
+                try {
+                    $stmt = $conexion->prepare("UPDATE clientes SET nomb_cli = ?, apelli_cli = ?, telefono = ?, direccion = ? WHERE id_cliente = ?");
+                    $stmt->execute([$nomb, $apelli, $tel, $dir, $id_cliente]);
+                    $mensaje = "¡Datos personales actualizados exitosamente!";
+                } catch (PDOException $e) {
+                    $error = "Error al actualizar los datos: " . $e->getMessage();
+                }
             }
         } 
         elseif ($accion === 'crear_cuenta') {
             $cod_tipo_cuenta = $_POST['cod_tipo_cuenta'] ?? '';
             $saldo_inicial = $_POST['saldo_inicial'] ?? 0.00;
-            $num_cuenta = '99' . mt_rand(10000000, 99999999);
 
             try {
+                $num_cuenta = generar_num_cuenta($conexion); // garantizado no repetido
                 $stmt = $conexion->prepare("
                     INSERT INTO cuentas (num_cuenta, id_cliente, cod_tipo_cuenta, saldo, fecha_apertura) 
                     VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
                 ");
                 $stmt->execute([$num_cuenta, $id_cliente, $cod_tipo_cuenta, $saldo_inicial]);
                 $mensaje = "¡Cuenta bancaria creada exitosamente (N°: " . $num_cuenta . ")!";
+            } catch (RuntimeException $e) {
+                $error = $e->getMessage();
             } catch (PDOException $e) {
-                $error = "Error al crear la cuenta: " . $e->getMessage();
+                $error = ($e->getCode() === '23505')
+                    ? "El número de cuenta generado ya existe. Intenta de nuevo."
+                    : "Error al crear la cuenta: " . $e->getMessage();
             }
         }
     }
@@ -179,11 +220,16 @@ else {
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold">Teléfono</label>
-                        <input type="text" name="tel_cli" class="form-control" value="<?php echo htmlspecialchars($cliente['telefono'] ?? ''); ?>">
+                        <input type="tel" name="tel_cli" class="form-control solo-numeros" inputmode="numeric" pattern="[0-9]{7,15}" minlength="7" maxlength="15" title="Solo números (7 a 15 dígitos)" required value="<?php echo htmlspecialchars($cliente['telefono'] ?? ''); ?>">
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold">Dirección</label>
                         <input type="text" name="dir_cli" class="form-control" value="<?php echo htmlspecialchars($cliente['direccion'] ?? ''); ?>">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nueva contraseña</label>
+                        <input type="password" name="nueva_password" class="form-control" minlength="4" maxlength="20" autocomplete="new-password" placeholder="Déjalo vacío si no quieres cambiarla">
+                        <div class="form-text">Entre 4 y 20 caracteres.</div>
                     </div>
                     <button type="submit" class="btn btn-custom w-100 py-2">Guardar Cambios</button>
                 </form>
@@ -222,12 +268,18 @@ else {
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">Teléfono</label>
-                                    <input type="text" name="tel_cli" class="form-control" value="<?php echo htmlspecialchars($cliente_a_editar['telefono'] ?? ''); ?>">
+                                    <input type="tel" name="tel_cli" class="form-control solo-numeros" inputmode="numeric" pattern="[0-9]{7,15}" minlength="7" maxlength="15" title="Solo números (7 a 15 dígitos)" required value="<?php echo htmlspecialchars($cliente_a_editar['telefono'] ?? ''); ?>">
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">Dirección</label>
                                     <input type="text" name="dir_cli" class="form-control" value="<?php echo htmlspecialchars($cliente_a_editar['direccion'] ?? ''); ?>">
                                 </div>
+                                <?php if ($rol === 'administrador'): ?>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Contraseña del cliente <span class="badge bg-secondary">solo administrador</span></label>
+                                    <input type="text" class="form-control bg-light" value="<?php echo htmlspecialchars($cliente_a_editar['password'] ?? ''); ?>" readonly>
+                                </div>
+                                <?php endif; ?>
                                 <button type="submit" class="btn btn-custom w-100 py-2">Guardar Cambios Personales</button>
                             </form>
                         </div>
@@ -357,6 +409,11 @@ else {
         <?php endif; ?>
 
     </div>
+    <script>
+    document.querySelectorAll('.solo-numeros').forEach(function (el) {
+        el.addEventListener('input', function () { el.value = el.value.replace(/\D/g, ''); });
+    });
+    </script>
 </body>
 </html>
-</html>
+
