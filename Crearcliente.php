@@ -20,18 +20,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if (empty($id_cliente) || empty($nomb_cli) || empty($apelli_cli) || empty($password)) {
         $error = "Faltan datos obligatorios por enviar, por favor ingresar datos faltantes.";
     } else {
-       try {
+        try {
             // 1. Generar el hash seguro de la contraseña
             $password_hash = password_hash($password, PASSWORD_DEFAULT);
             
-            // 2. Agregar 'password' en las columnas y el '?' extra en los valores
+            // 2. Sentencia SQL con la columna 'password' y 7 marcadores de posición (?)
             $sentencia = $conexion->prepare("INSERT INTO clientes (id_cliente, nomb_cli, apelli_cli, direccion, telefono, correo, password) VALUES (?, ?, ?, ?, ?, ?, ?)");
             
-            // 3. Pasar la variable $password_hash al final del arreglo de ejecución
+            // 3. Ejecutar pasando el hash en el último lugar del arreglo
             $resultado = $sentencia->execute([$id_cliente, $nomb_cli, $apelli_cli, $direccion, $telefono, $correo, $password_hash]);
     
             if ($resultado) {
-                $mensaje = "¡Cliente registrado exitosamente en el sistema!";
+                $mensaje = "¡Cliente registrado exitosamente en el sistema con su respectiva contraseña!";
             }
         } catch (PDOException $e) {
             $error = "Error al crear nuevo cliente: " . $e->getMessage();
@@ -63,7 +63,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         <?php endif; ?>
 
         <div class="card shadow-sm border-0 rounded-4 p-4 bg-white col-lg-8 mx-auto">
-            <!-- El formulario apunta a este mismo archivo mediante POST -->
             <form action="Crearcliente.php" method="POST">
                 <div class="mb-3">
                     <label for="id_cliente" class="form-label fw-bold">Cédula / Identificación *</label>
@@ -81,10 +80,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     </div>
                 </div>
 
-                <!-- Campo de contraseña añadido correctamente en el HTML -->
                 <div class="mb-3">
                     <label for="password" class="form-label fw-bold">Contraseña de Acceso *</label>
-                    <input type="password" class="form-control" id="password" name="password" required placeholder="Crea una contraseña para el cliente">
+                    <input type="password" class="form-control" id="password" name="password" required placeholder="Crea una contraseña segura para el cliente">
                 </div> 
 
                 <div class="mb-3">
