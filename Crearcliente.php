@@ -1,6 +1,13 @@
 <?php
+// Crearcliente.php
+ob_start();
 session_start();
 require_once "conexionDB.php";
+
+if (!isset($_SESSION['rol']) || !in_array($_SESSION['rol'], ['administrador', 'cajero'], true)) {
+    header("Location: login.php");
+    exit;
+}
 
 $mensaje = "";
 $error = "";
@@ -14,21 +21,46 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $telefono   = trim($_POST["telefono"] ?? '');
     $correo     = trim($_POST["correo"] ?? '');
 
-    if (empty($id_cliente) || empty($nomb_cli) || empty($apelli_cli) || empty($password)) {
+    if ($id_cliente === '' || $nomb_cli === '' || $apelli_cli === '' || $password === '') {
         $error = "Faltan datos obligatorios por enviar, por favor ingresar datos faltantes.";
     } elseif (!preg_match('/^[0-9]+$/', $telefono)) {
         $error = "Error: El número de teléfono solo debe contener dígitos numéricos y no puede incluir caracteres especiales.";
     } else {
         try {
+            // Por si la tabla se creó con un SQL viejo sin la columna password
+            $conexion->exec("ALTER TABLE clientes ADD COLUMN IF NOT EXISTS password character varying(255)");
+
             $password_hash = password_hash($password, PASSWORD_DEFAULT);
-            $sentencia = $conexion->prepare("INSERT INTO clientes (id_cliente, nomb_cli, apelli_cli, direccion, telefono, correo, password) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $resultado = $sentencia->execute([$id_cliente, $nomb_cli, $apelli_cli, $direccion, $telefono, $correo, $password_hash]);
-    
-            if ($resultado) {
-                $mensaje = "¡Cliente registrado exitosamente en el sistema con su respectiva contraseña!";
+            $sentencia = $conexion->prepare(
+                "INSERT INTO clientes (id_cliente, nomb_cli, apelli_cli, direccion, telefono, correo, password)
+                 VALUES (:id, :nom, :ape, :dir, :tel, :cor, :pass)"
+            );
+            $sentencia->execute([
+                ':id'   => $id_cliente,
+                ':nom'  => $nomb_cli,
+                ':ape'  => $apelli_cli,
+                ':dir'  => $direccion !== '' ? $direccion : null,
+                ':tel'  => $telefono,
+                ':cor'  => $correo !== '' ? $correo : null,
+                ':pass' => $password_hash,
+            ]);
+
+            // Verificar que realmente quedó guardada
+            $chk = $conexion->prepare("SELECT password FROM clientes WHERE id_cliente = ?");
+            $chk->execute([$id_cliente]);
+            $guardada = (string)$chk->fetchColumn();
+
+            if ($guardada !== '' && password_verify($password, $guardada)) {
+                $mensaje = "¡Cliente registrado exitosamente con su contraseña!";
+            } else {
+                $error = "El cliente se creó pero la contraseña no quedó guardada. Revisa la columna password de la tabla clientes.";
             }
         } catch (PDOException $e) {
-            $error = "Error al crear nuevo cliente: " . $e->getMessage();
+            if ($e->getCode() === '23505') {
+                $error = "Ya existe un cliente con esa cédula.";
+            } else {
+                $error = "Error al crear nuevo cliente: " . $e->getMessage();
+            }
         }
     }
 }
@@ -49,11 +81,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         </div>
 
         <?php if (!empty($mensaje)): ?>
-            <div class="alert alert-success"><?php echo $mensaje; ?></div>
+            <div class="alert alert-success"><?php echo htmlspecialchars($mensaje); ?></div>
         <?php endif; ?>
 
         <?php if (!empty($error)): ?>
-            <div class="alert alert-danger"><?php echo $error; ?></div>
+            <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
 
         <div class="card shadow-sm border-0 rounded-4 p-4 bg-white col-lg-8 mx-auto">
