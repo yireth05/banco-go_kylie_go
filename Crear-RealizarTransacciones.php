@@ -19,19 +19,28 @@ define('UMBRAL_DEPOSITO_CAJERO', 50000000.00);  // Umbral de auditoría de fondo
 
 // Cargar cuentas
 $cuentas = [];
+$prestamos_cliente = [];
 try {
     if ($rol === 'cliente' && $id_cliente) {
         $stmt = $conexion->prepare("SELECT num_cuenta, saldo FROM cuentas WHERE id_cliente = :cli ORDER BY num_cuenta");
         $stmt->execute([':cli' => $id_cliente]);
         $cuentas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Para el cliente, restringir la lista de tipos de transacción (excluir Depósitos)
+        // Para el cliente, restringir la lista de tipos de transacción (excluir Depósitos directos web)
         $stmtTipos = $conexion->prepare("SELECT * FROM tipo_transacciones WHERE LOWER(nomb_tipo_transaccion) NOT LIKE '%dep%' ORDER BY cod_tipo_transaccion");
         $stmtTipos->execute();
         $tipos = $stmtTipos->fetchAll(PDO::FETCH_ASSOC);
+
+        // Cargar préstamos activos del cliente con saldo pendiente
+        $stmtPres = $conexion->prepare("SELECT id_prestamo, saldo_pendiente FROM prestamos WHERE id_cliente = :cli AND saldo_pendiente > 0 ORDER BY id_prestamo");
+        $stmtPres->execute([':cli' => $id_cliente]);
+        $prestamos_cliente = $stmtPres->fetchAll(PDO::FETCH_ASSOC);
     } else {
         $cuentas = $conexion->query("SELECT num_cuenta, saldo FROM cuentas ORDER BY num_cuenta")->fetchAll(PDO::FETCH_ASSOC);
         $tipos = $conexion->query("SELECT * FROM tipo_transacciones ORDER BY cod_tipo_transaccion")->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Si es cajero o admin, puede ver los préstamos activos si desea abonar a alguno
+        $prestamos_cliente = $conexion->query("SELECT id_prestamo, saldo_pendiente, id_cliente FROM prestamos WHERE saldo_pendiente > 0 ORDER BY id_prestamo")->fetchAll(PDO::FETCH_ASSOC);
     }
     
     $formas = $conexion->query("SELECT * FROM formas_transacciones ORDER BY cod_forma_transaccion")->fetchAll(PDO::FETCH_ASSOC);
@@ -45,8 +54,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $monto = floatval($_POST['monto_transaccion'] ?? 0);
     $cod_tipo = intval($_POST['cod_tipo_transaccion'] ?? 1);
     $cod_forma = intval($_POST['cod_forma_transaccion'] ?? 1);
+    $id_prestamo_abono = $_POST['id_prestamo'] ?? null;
 
-    // 1. Obtener la transacción a realizar
+    // 1. Obtener el tipo de transacción a realizar
     $stmtNombreTipo = $conexion->prepare("SELECT nomb_tipo_transaccion FROM tipo_transacciones WHERE cod_tipo_transaccion = :tipo");
     $stmtNombreTipo->execute([':tipo' => $cod_tipo]);
     $tipoRow = $stmtNombreTipo->fetch(PDO::FETCH_ASSOC);
@@ -54,20 +64,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $esDeposito = (strpos($nombreTipo, 'dep') !== false || $cod_tipo == 1);
     $esRetiro = (strpos($nombreTipo, 'retiro') !== false || $cod_tipo == 2);
+    $esAbonoPrestamo = (strpos($nombreTipo, 'abono') !== false || strpos($nombreTipo, 'préstamo') !== false || $cod_tipo == 3);
 
     // 2. PROTOCOLO DE SEGURIDAD POR ROLES
     if ($monto <= 0) {
         $error = "El monto ingresado debe ser mayor a cero ($0.00).";
     } elseif ($rol === 'cliente' && $esDeposito) {
-        // REGLA: Los clientes no pueden acreditarse dinero a sí mismos mediante depósitos directos
         $error = "Protocolo de Seguridad: Los clientes no pueden realizar depósitos directos en la banca web. Debe dirigirse a una sucursal con un cajero o solicitar una transferencia.";
     } elseif ($rol === 'cliente' && $monto > LIMITE_MAX_CLIENTE_WEB) {
-        // REGLA: Límite por operación en banca virtual
         $error = "El monto máximo permitido por transacción en la banca virtual es de $" . number_format(LIMITE_MAX_CLIENTE_WEB, 2) . " COP.";
+    } elseif ($esAbonoPrestamo && empty($id_prestamo_abono)) {
+        $error = "Debe seleccionar el préstamo al cual desea realizar el abono.";
     } else {
         try {
-            // Consultar saldo actual de la cuenta
-            $stmtCuenta = $conexion->prepare("SELECT saldo FROM cuentas WHERE num_cuenta = :cuenta");
+            // Consultar saldo actual de la cuenta origen
+            $stmtCuenta = $conexion->prepare("SELECT saldo, id_cliente FROM cuentas WHERE num_cuenta = :cuenta");
             $stmtCuenta->execute([':cuenta' => $num_cuenta]);
             $cuentaData = $stmtCuenta->fetch(PDO::FETCH_ASSOC);
 
@@ -76,18 +87,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $saldoActual = floatval($cuentaData['saldo']);
 
-                // 3. PROTOCOLO DE RETIRO: Evitar números negativos
-                if ($esRetiro && $monto > $saldoActual) {
+                // Si es abono a préstamo, validaciones adicionales
+                $prestamoData = null;
+                if ($esAbonoPrestamo) {
+                    $stmtPCheck = $conexion->prepare("SELECT * FROM prestamos WHERE id_prestamo = :pres");
+                    $stmtPCheck->execute([':pres' => $id_prestamo_abono]);
+                    $prestamoData = $stmtPCheck->fetch(PDO::FETCH_ASSOC);
+
+                    if (!$prestamoData) {
+                        $error = "El préstamo seleccionado no existe.";
+                    } elseif ($monto > $saldoActual) {
+                        $error = "Fondos insuficientes en la cuenta para realizar el abono. Saldo disponible: $" . number_format($saldoActual, 2);
+                    } elseif ($monto > floatval($prestamoData['saldo_pendiente'])) {
+                        $error = "El monto del abono ($" . number_format($monto, 2) . ") supera el saldo pendiente del préstamo ($" . number_format($prestamoData['saldo_pendiente'], 2) . ").";
+                    }
+                }
+
+                // 3. PROTOCOLO DE RETIRO / SALDO INSUFICIENTE
+                if (!$error && $esRetiro && $monto > $saldoActual) {
                     $error = "Fondos insuficientes. El saldo disponible es de $" . number_format($saldoActual, 2) . " y el monto a retirar es de $" . number_format($monto, 2) . ".";
-                } else {
-                    $nuevoSaldo = $esRetiro ? ($saldoActual - $monto) : ($saldoActual + $monto);
+                } elseif (!$error) {
+                    // Cálculo de nuevos saldos
+                    if ($esRetiro || $esAbonoPrestamo) {
+                        $nuevoSaldoCuenta = $saldoActual - $monto;
+                    } else {
+                        $nuevoSaldoCuenta = $saldoActual + $monto;
+                    }
 
                     $id_cajero = ($cod_forma == 3) ? null : 1;
                     $id_banca_virtual = ($cod_forma == 3) ? 1 : null;
 
                     $conexion->beginTransaction();
 
-                    // Registrar transacción
+                    // Registrar transacción general
                     $stmtIns = $conexion->prepare("
                         INSERT INTO transacciones (
                             fecha_transaccion, monto_transaccion, num_cuenta_origen, 
@@ -104,26 +136,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ':banca'   => $id_banca_virtual
                     ]);
 
-                    // Actualizar el saldo real de la cuenta
+                    // Actualizar saldo de la cuenta
                     $stmtUpd = $conexion->prepare("UPDATE cuentas SET saldo = :nuevo_saldo WHERE num_cuenta = :cuenta");
                     $stmtUpd->execute([
-                        ':nuevo_saldo' => $nuevoSaldo,
+                        ':nuevo_saldo' => $nuevoSaldoCuenta,
                         ':cuenta'      => $num_cuenta
                     ]);
 
+                    // Si es abono a préstamo, actualizar el saldo pendiente del préstamo
+                    if ($esAbonoPrestamo && $prestamoData) {
+                        $nuevoSaldoPrestamo = floatval($prestamoData['saldo_pendiente']) - $monto;
+                        $stmtUpdPres = $conexion->prepare("UPDATE prestamos SET saldo_pendiente = :nuevo_saldo_pres WHERE id_prestamo = :pres");
+                        $stmtUpdPres->execute([
+                            ':nuevo_saldo_pres' => $nuevoSaldoPrestamo,
+                            ':pres'             => $id_prestamo_abono
+                        ]);
+                    }
+
                     $conexion->commit();
 
-                    $alertaProtocolo = ($esDeposito && $monto >= UMBRAL_DEPOSITO_CAJERO) ? " (Operación registrada bajo auditoría de origen de fondos)" : "";
-                    $accionTexto = $esRetiro ? "Retiro realizado exitosamente" : "Depósito procesado en ventanilla";
-                    $mensaje = "{$accionTexto}{$alertaProtocolo}. El nuevo saldo de la cuenta <strong>{$num_cuenta}</strong> es: <strong>$" . number_format($nuevoSaldo, 2) . "</strong>.";
+                    if ($esAbonoPrestamo) {
+                        $mensaje = "Abono al préstamo <strong>{$id_prestamo_abono}</strong> realizado con éxito. Nuevo saldo pendiente: <strong>$" . number_format($nuevoSaldoPrestamo, 2) . "</strong>.";
+                    } else {
+                        $alertaProtocolo = ($esDeposito && $monto >= UMBRAL_DEPOSITO_CAJERO) ? " (Operación registrada bajo auditoría de origen de fondos)" : "";
+                        $accionTexto = $esRetiro ? "Retiro realizado exitosamente" : "Depósito procesado en ventanilla";
+                        $mensaje = "{$accionTexto}{$alertaProtocolo}. El nuevo saldo de la cuenta <strong>{$num_cuenta}</strong> es: <strong>$" . number_format($nuevoSaldoCuenta, 2) . "</strong>.";
+                    }
 
-                    // Recargar cuentas
+                    // Recargar cuentas y préstamos
                     if ($rol === 'cliente' && $id_cliente) {
                         $stmt = $conexion->prepare("SELECT num_cuenta, saldo FROM cuentas WHERE id_cliente = :cli ORDER BY num_cuenta");
                         $stmt->execute([':cli' => $id_cliente]);
                         $cuentas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                        $stmtPres = $conexion->prepare("SELECT id_prestamo, saldo_pendiente FROM prestamos WHERE id_cliente = :cli AND saldo_pendiente > 0 ORDER BY id_prestamo");
+                        $stmtPres->execute([':cli' => $id_cliente]);
+                        $prestamos_cliente = $stmtPres->fetchAll(PDO::FETCH_ASSOC);
                     } else {
                         $cuentas = $conexion->query("SELECT num_cuenta, saldo FROM cuentas ORDER BY num_cuenta")->fetchAll(PDO::FETCH_ASSOC);
+                        $prestamos_cliente = $conexion->query("SELECT id_prestamo, saldo_pendiente, id_cliente FROM prestamos WHERE saldo_pendiente > 0 ORDER BY id_prestamo")->fetchAll(PDO::FETCH_ASSOC);
                     }
                 }
             }
@@ -201,12 +252,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-bold">Tipo de Transacción *</label>
-                    <select name="cod_tipo_transaccion" class="form-select" required>
+                    <select name="cod_tipo_transaccion" id="cod_tipo_transaccion" class="form-select" required onchange="verificarTipoTransaccion(this)">
+                        <option value="" disabled selected>-- Seleccione tipo --</option>
                         <?php foreach ($tipos as $t): ?>
-                            <option value="<?php echo $t['cod_tipo_transaccion']; ?>"><?php echo htmlspecialchars($t['nomb_tipo_transaccion']); ?></option>
+                            <option value="<?php echo $t['cod_tipo_transaccion']; ?>" data-nombre="<?php echo strtolower($t['nomb_tipo_transaccion']); ?>">
+                                <?php echo htmlspecialchars($t['nomb_tipo_transaccion']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                        <!-- Por si el tipo 3 de abono se añadió directamente en la BD con otro nombre -->
+                        <?php if (!empty($prestamos_cliente) && !array_filter($tipos, fn($x) => $x['cod_tipo_transaccion'] == 3)): ?>
+                            <option value="3" data-nombre="abono a préstamo">Abono a Préstamo</option>
+                        <?php endif; ?>
+                    </select>
+                </div>
+
+                <!-- SECCIÓN DINÁMICA: SELECCIÓN DE PRÉSTAMO (SOLO SI APLICA) -->
+                <div class="mb-3 d-none" id="seccion_prestamo">
+                    <label class="form-label fw-bold text-primary">Seleccione el Préstamo a Abonar *</label>
+                    <select name="id_prestamo" id="id_prestamo" class="form-select">
+                        <option value="" disabled selected>-- Seleccione un préstamo activo --</option>
+                        <?php foreach ($prestamos_cliente as $pres): ?>
+                            <option value="<?php echo htmlspecialchars($pres['id_prestamo']); ?>">
+                                Préstamo #<?php echo htmlspecialchars($pres['id_prestamo']); ?> (Saldo Pendiente: $<?php echo number_format($pres['saldo_pendiente'], 2); ?>)
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
+
                 <div class="mb-3">
                     <label class="form-label fw-bold">Forma de Transacción *</label>
                     <select name="cod_forma_transaccion" class="form-select" required>
@@ -226,6 +298,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
         </div>
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function verificarTipoTransaccion(selectElement) {
+            const selectedOption = selectElement.options[selectElement.selectedIndex];
+            const nombreTipo = selectedOption.getAttribute('data-nombre') || '';
+            const codTipo = selectElement.value;
+            const seccionPrestamo = document.getElementById('seccion_prestamo');
+            const selectPrestamo = document.getElementById('id_prestamo');
+
+            // Detectar si seleccionó abono a préstamo (por código 3 o por nombre en texto)
+            if (codTipo === '3' || nombreTipo.includes('abono') || nombreTipo.includes('préstamo')) {
+                seccionPrestamo.classList.remove('d-none');
+                selectPrestamo.setAttribute('required', 'true');
+            } else {
+                seccionPrestamo.classList.add('d-none');
+                selectPrestamo.removeAttribute('required');
+                selectPrestamo.value = '';
+            }
+        }
+    </script>
 </body>
 </html>
