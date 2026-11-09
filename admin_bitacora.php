@@ -1,16 +1,14 @@
 <?php
-// admin_bitacora.php
 session_start();
 require_once 'conexionDB.php';
-
-// Validar que solo administradores y cajeros puedan acceder a la bitácora
+// Validar que solo administradores y cajeros puedan acceder a esto
 if (!isset($_SESSION['rol']) || (!in_array($_SESSION['rol'], ['administrador', 'cajero']))) {
     header("Location: login.php");
     exit;
 }
 
 try {
-    // Consulta uniendo la bitácora con la tabla transacciones y el tipo de transacción
+    //  unimosla bitácora con la tabla transacciones y el tipo de transacción
     $sql = "
         SELECT 
             b.id_bitacora,
