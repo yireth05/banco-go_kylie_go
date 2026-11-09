@@ -356,7 +356,9 @@ CREATE TABLE public.tipo_transacciones (
 );
 
 ALTER TABLE public.tipo_transacciones OWNER TO postgres;
-
+INSERT INTO public.tipo_transacciones (cod_tipo_transaccion, nomb_tipo_transaccion) 
+VALUES (3, 'Abono a Préstamo')
+ON CONFLICT (cod_tipo_transaccion) DO NOTHING;
 
 CREATE TABLE public.transacciones (
     id_transaccion integer NOT NULL,
