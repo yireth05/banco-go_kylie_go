@@ -54,7 +54,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $claveDinamica = strtolower($cliente['nomb_cli']) . "123";
                 
                 // Valida contraseña real en BD OR dinámica (nombre123) OR genérica
-                if ($password === ($cliente['password'] ?? '') || 
+                if ($password_verify($password, $cliente['password'] ?? '') || 
                     $password === $claveDinamica || 
                     $password === "cliente123") {
                     
