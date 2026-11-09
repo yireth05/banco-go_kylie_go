@@ -11,21 +11,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $id_cliente = trim($_POST["id_cliente"] ?? '');
     $nomb_cli   = trim($_POST["nomb_cli"] ?? '');
     $apelli_cli = trim($_POST["apelli_cli"] ?? '');
+    $password   = trim($_POST["password"] ?? '');
     $direccion  = trim($_POST["direccion"] ?? '');
     $telefono   = trim($_POST["telefono"] ?? '');
     $correo     = trim($_POST["correo"] ?? '');
 
-    if (empty($id_cliente) || empty($nomb_cli) || empty($apelli_cli)) {
+    // Validar que los campos obligatorios (incluyendo la contraseña) no estén vacíos
+    if (empty($id_cliente) || empty($nomb_cli) || empty($apelli_cli) || empty($password)) {
         $error = "Faltan datos obligatorios por enviar, por favor ingresar datos faltantes.";
     } else {
         try {
+            // Generar el hash seguro de la contraseña
             $password_hash = password_hash($password, PASSWORD_DEFAULT);
             
-            $sentencia = $conexion->prepare("INSERT INTO clientes (id_cliente, nomb_cli, apelli_cli, direccion, telefono, correo) VALUES (?, ?, ?, ?, ?, ?)");
-            $resultado = $sentencia->execute([$id_cliente, $nomb_cli, $apelli_cli, $direccion, $telefono, $correo]);
+            // Insertar el cliente junto con el hash de la contraseña en la base de datos
+            $sentencia = $conexion->prepare("INSERT INTO clientes (id_cliente, nomb_cli, apelli_cli, direccion, telefono, correo, password) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $resultado = $sentencia->execute([$id_cliente, $nomb_cli, $apelli_cli, $direccion, $telefono, $correo, $password_hash]);
     
             if ($resultado) {
-                
                 $mensaje = "¡Cliente registrado exitosamente en el sistema!";
             }
         } catch (PDOException $e) {
@@ -75,10 +78,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         <input type="text" class="form-control" id="apelli_cli" name="apelli_cli" required placeholder="Ej: Parra">
                     </div>
                 </div>
-                      <div class="mb-3">
+
+                <!-- Campo de contraseña añadido correctamente en el HTML -->
+                <div class="mb-3">
                     <label for="password" class="form-label fw-bold">Contraseña de Acceso *</label>
                     <input type="password" class="form-control" id="password" name="password" required placeholder="Crea una contraseña para el cliente">
                 </div> 
+
                 <div class="mb-3">
                     <label for="direccion" class="form-label fw-bold">Dirección</label>
                     <input type="text" class="form-control" id="direccion" name="direccion" placeholder="Ej: Calle 45 # 12-34">
