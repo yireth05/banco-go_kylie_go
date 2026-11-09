@@ -1,5 +1,5 @@
 <?php
-// Crear-RealizarTransacciones.php
+
 session_start();
 require_once 'conexionDB.php';
 
@@ -13,7 +13,7 @@ $id_cliente = $_SESSION['usuario_id'] ?? $_SESSION['id_cliente'] ?? null;
 $mensaje = "";
 $error = "";
 
-// Definición de límites del protocolo bancario
+
 define('LIMITE_MAX_CLIENTE_WEB', 10000000.00); 
 define('UMBRAL_DEPOSITO_CAJERO', 50000000.00);  
 
@@ -29,7 +29,7 @@ try {
         $stmt->execute([':cli' => $id_cliente]);
         $cuentas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Cliente no puede hacer depósitos directos web
+        // Cliente no puede hacer depos directos web
         $stmtTipos = $conexion->prepare("SELECT * FROM tipo_transacciones WHERE LOWER(nomb_tipo_transaccion) NOT LIKE '%dep%' ORDER BY cod_tipo_transaccion");
         $stmtTipos->execute();
         $tipos = $stmtTipos->fetchAll(PDO::FETCH_ASSOC);
@@ -44,7 +44,7 @@ try {
     // 2. Cargar formas de transacción
     $formas = $conexion->query("SELECT * FROM formas_transacciones ORDER BY cod_forma_transaccion")->fetchAll(PDO::FETCH_ASSOC);
 
-    // 3. Cargar TODOS los préstamos activos mapeados por cliente para usarlos dinámicamente en JavaScript
+    // 3. Cargar todos los préstamos activosdel cliente
     $stmtPres = $conexion->query("SELECT id_prestamo, id_cliente, saldo_pendiente FROM prestamos WHERE saldo_pendiente > 0");
     $todos_prestamos = $stmtPres->fetchAll(PDO::FETCH_ASSOC);
 
