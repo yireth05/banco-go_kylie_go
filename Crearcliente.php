@@ -21,8 +21,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         try {
             $sentencia = $conexion->prepare("INSERT INTO clientes (id_cliente, nomb_cli, apelli_cli, direccion, telefono, correo) VALUES (?, ?, ?, ?, ?, ?)");
             $resultado = $sentencia->execute([$id_cliente, $nomb_cli, $apelli_cli, $direccion, $telefono, $correo]);
-
+    
             if ($resultado) {
+                $password_temporal = $id_cliente;
+                
+                $sql_rol = sprintf('CREATE ROLE "%s" WITH LOGIN PASSWORD %s', $id_cliente, $conexion->quote($password_temporal));
+                $conexion->exec($sql_rol);
+                
                 $mensaje = "¡Cliente registrado exitosamente en el sistema!";
             }
         } catch (PDOException $e) {
