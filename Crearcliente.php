@@ -20,12 +20,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if (empty($id_cliente) || empty($nomb_cli) || empty($apelli_cli) || empty($password)) {
         $error = "Faltan datos obligatorios por enviar, por favor ingresar datos faltantes.";
     } else {
-        try {
-            // Generar el hash seguro de la contraseña
+       try {
+            // 1. Generar el hash seguro de la contraseña
             $password_hash = password_hash($password, PASSWORD_DEFAULT);
             
-            // Insertar el cliente junto con el hash de la contraseña en la base de datos
+            // 2. Agregar 'password' en las columnas y el '?' extra en los valores
             $sentencia = $conexion->prepare("INSERT INTO clientes (id_cliente, nomb_cli, apelli_cli, direccion, telefono, correo, password) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            
+            // 3. Pasar la variable $password_hash al final del arreglo de ejecución
             $resultado = $sentencia->execute([$id_cliente, $nomb_cli, $apelli_cli, $direccion, $telefono, $correo, $password_hash]);
     
             if ($resultado) {
