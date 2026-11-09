@@ -1,5 +1,4 @@
 <?php
-// estado_cuentas.php - Consulta de Cuentas y Saldos Actuales
 session_start();
 require_once 'conexionDB.php';
 
@@ -15,7 +14,7 @@ $error = "";
 
 try {
     if ($rol === 'cliente' && $id_cliente) {
-        // Consulta solo las cuentas y saldos del cliente actual logueado
+
         $stmt = $conexion->prepare("
             SELECT cu.num_cuenta, cu.saldo, cu.fecha_apertura, tc.nomb_tipo_cuenta, cl.id_cliente, cl.nomb_cli, cl.apelli_cli 
             FROM cuentas cu
@@ -26,7 +25,7 @@ try {
         ");
         $stmt->execute([':cli' => $id_cliente]);
     } else {
-        // Si es administrador o cajero, muestra el listado general de todas las cuentas y saldos del banco
+   
         $stmt = $conexion->query("
             SELECT cu.num_cuenta, cu.saldo, cu.fecha_apertura, tc.nomb_tipo_cuenta, cl.id_cliente, cl.nomb_cli, cl.apelli_cli 
             FROM cuentas cu
