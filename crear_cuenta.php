@@ -2,6 +2,11 @@
 session_start();
 require_once "conexionDB.php";
 
+if (!isset($_SESSION['rol']) || !in_array($_SESSION['rol'], ['administrador', 'cajero'], true)) {
+    header("Location: login.php");
+    exit;
+}
+
 $mensaje = "";
 $error = "";
 
@@ -19,15 +24,24 @@ try {
 
 // 3. Procesar el formulario cuando se envía por POST
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $num_cuenta      = trim($_POST["num_cuenta"] ?? '');
+    $num_cuenta      = strtoupper(trim($_POST["num_cuenta"] ?? ''));
     $id_cliente      = trim($_POST["id_cliente"] ?? '');
     $cod_tipo_cuenta = trim($_POST["cod_tipo_cuenta"] ?? '');
     $saldo           = trim($_POST["saldo"] ?? 0.00);
 
-    if (empty($num_cuenta) || empty($id_cliente) || empty($cod_tipo_cuenta)) {
+    if ($num_cuenta === '' || $id_cliente === '' || $cod_tipo_cuenta === '') {
         $error = "Por favor, complete todos los campos obligatorios.";
+    } elseif (!is_numeric($saldo) || (float)$saldo < 0) {
+        $error = "El saldo inicial debe ser un número mayor o igual a 0.";
     } else {
         try {
+            // El número de cuenta no puede repetirse (sin distinguir mayúsculas/minúsculas)
+            $existe = $conexion->prepare("SELECT 1 FROM cuentas WHERE UPPER(num_cuenta) = ?");
+            $existe->execute([$num_cuenta]);
+            if ($existe->fetchColumn()) {
+                throw new RuntimeException("El número de cuenta {$num_cuenta} ya existe. Ingresa uno diferente.");
+            }
+
             $sentencia = $conexion->prepare("
                 INSERT INTO cuentas (num_cuenta, saldo, fecha_apertura, id_cliente, cod_tipo_cuenta) 
                 VALUES (?, ?, CURRENT_DATE, ?, ?)
@@ -37,8 +51,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if ($resultado) {
                 $mensaje = "¡Cuenta bancaria creada exitosamente para el cliente!";
             }
+        } catch (RuntimeException $e) {
+            $error = $e->getMessage();
         } catch (PDOException $e) {
-            $error = "Error al crear la cuenta: " . $e->getMessage();
+            if ($e->getCode() === '23505') { // carrera: otro usuario la creó justo ahora
+                $error = "El número de cuenta {$num_cuenta} ya existe. Ingresa uno diferente.";
+            } else {
+                $error = "Error al crear la cuenta: " . $e->getMessage();
+            }
         }
     }
 }
@@ -59,7 +79,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         </div>
 
         <?php if (!empty($mensaje)): ?>
-            <div class="alert alert-success"><?php echo $mensaje; ?></div>
+            <div class="alert alert-success"><?php echo htmlspecialchars($mensaje); ?></div>
         <?php endif; ?>
 
         <?php if (!empty($error)): ?>
@@ -70,7 +90,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             <form action="crear_cuenta.php" method="POST">
                 <div class="mb-3">
                     <label for="num_cuenta" class="form-label fw-bold">Número de Cuenta <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="num_cuenta" name="num_cuenta" required placeholder="Ej: AH-0001 o CO-0002">
+                    <input type="text" class="form-control" id="num_cuenta" name="num_cuenta" required maxlength="20" placeholder="Ej: AH-0001 o CO-0002">
                 </div>
 
                 <div class="mb-3">
