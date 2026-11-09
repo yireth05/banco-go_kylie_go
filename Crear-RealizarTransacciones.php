@@ -248,7 +248,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="mb-3">
                     <label class="form-label fw-bold">Tipo de Transacción *</label>
                     <select name="cod_tipo_transaccion" id="cod_tipo_transaccion" class="form-select" required onchange="verificarTipoTransaccion(this)">
-                        <option value="" disabled selected>-- Primero seleccione una cuenta --</option>
+                        <option value="" disabled selected>-- Seleccione tipo de transaccion --</option>
                         <?php foreach ($tipos as $t): ?>
                             <option value="<?php echo $t['cod_tipo_transaccion']; ?>" data-nombre="<?php echo strtolower($t['nomb_tipo_transaccion']); ?>">
                                 <?php echo htmlspecialchars($t['nomb_tipo_transaccion']); ?>
