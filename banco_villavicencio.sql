@@ -568,8 +568,9 @@ COPY public.tipo_cuentas (cod_tipo_cuenta, nomb_tipo_cuenta) FROM stdin;
 COPY public.tipo_transacciones (cod_tipo_transaccion, nomb_tipo_transaccion) FROM stdin;
 1	Depósito
 2	Retiro
-3  Abono a Préstamo
+3	Abono a Préstamo
 \.
+    
 INSERT INTO public.tipo_transacciones (cod_tipo_transaccion, nomb_tipo_transaccion) 
 VALUES (3, 'Abono a Préstamo') 
 ON CONFLICT DO NOTHING;
