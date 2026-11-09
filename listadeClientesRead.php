@@ -7,6 +7,8 @@ if (!isset($_SESSION['rol']) || !in_array($_SESSION['rol'], ['administrador', 'c
     exit;
 }
 
+$es_admin = ($_SESSION['rol'] === 'administrador'); // solo el administrador ve contraseñas
+
 try {
     $sentencia = $conexion->query("SELECT * FROM clientes ORDER BY nomb_cli ASC");
     $clientes  = $sentencia->fetchAll(PDO::FETCH_ASSOC);
@@ -49,6 +51,7 @@ try {
                                         <th>Dirección</th>
                                         <th>Teléfono</th>
                                         <th>Correo</th>
+                                        <?php if ($es_admin): ?><th>Contraseña</th><?php endif; ?>
                                         <th>Acciones</th>
                                     </tr>
                                 </thead>
@@ -63,6 +66,9 @@ try {
                                                 <td><?php echo htmlspecialchars($cliente['direccion'] ?? 'N/A'); ?></td>
                                                 <td><?php echo htmlspecialchars($cliente['telefono'] ?? 'N/A'); ?></td>
                                                 <td><?php echo htmlspecialchars($cliente['correo'] ?? 'N/A'); ?></td>
+                                                <?php if ($es_admin): ?>
+                                                    <td><code><?php echo htmlspecialchars($cliente['password'] ?? '—'); ?></code></td>
+                                                <?php endif; ?>
                                                 <td>
                                                     <a href="editar_cliente.php?id=<?php echo urlencode($cliente['id_cliente']); ?>" class="btn btn-warning btn-sm rounded-pill">Editar</a>
                                                     <button type="button" class="btn btn-danger btn-sm rounded-pill" onclick="confirmarEliminacion('<?php echo $cliente['id_cliente']; ?>')">Eliminar</button>
@@ -71,7 +77,7 @@ try {
                                         <?php endforeach; ?>
                                     <?php else: ?>
                                         <tr id="fila-vacia">
-                                            <td colspan="7" class="text-center text-muted py-4">No hay clientes registrados en la base de datos.</td>
+                                            <td colspan="<?php echo $es_admin ? 8 : 7; ?>" class="text-center text-muted py-4">No hay clientes registrados en la base de datos.</td>
                                         </tr>
                                     <?php endif; ?>
                                 </tbody>
