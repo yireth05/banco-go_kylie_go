@@ -1,11 +1,8 @@
 <?php
-// gestion_prestamos.php
 session_start();
 include_once "conexionDB.php";
 
 $mensaje = "";
-
-// Procesar el registro de un nuevo préstamo
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $id_prestamo      = trim($_POST["id_prestamo"]);
     $id_cliente       = trim($_POST["id_cliente"]);
@@ -13,7 +10,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $tasa_interes     = (float)$_POST["tasa_interes"];
     $cuotas_aprobadas = (int)$_POST["cuotas_aprobadas"];
 
-    // En un préstamo nuevo, el saldo pendiente equivale al monto aprobado
     $saldo_pendiente = $monto_aprobado;
 
     try {
@@ -46,7 +42,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 }
 
-// Consultar la lista general de préstamos junto con la información del cliente
 try {
     $sql_consulta = "SELECT p.*, c.nomb_cli, c.apelli_cli 
                     FROM prestamos p 
@@ -55,7 +50,7 @@ try {
     $stmt_p = $conexion->query($sql_consulta);
     $prestamos = $stmt_p->fetchAll(PDO::FETCH_ASSOC);
 
-    // Consultar lista de clientes para el selector del formulario
+
     $stmt_c = $conexion->query("SELECT id_cliente, nomb_cli, apelli_cli FROM clientes ORDER BY nomb_cli ASC");
     $clientes = $stmt_c->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
@@ -128,7 +123,6 @@ try {
 </head>
 <body>
 
-    <!-- Incluir barra de navegación si existe -->
     <?php if (file_exists("navbar.php")) include_once "navbar.php"; ?>
 
     <div class="container mt-4 mb-5">
@@ -144,7 +138,7 @@ try {
         <?php echo $mensaje; ?>
 
         <div class="row">
-            <!-- Formulario de Registro de Préstamo -->
+    
             <div class="col-md-4 mb-4">
                 <div class="card card-custom bg-white">
                     <div class="card-header card-header-brand p-3">
@@ -190,7 +184,6 @@ try {
                 </div>
             </div>
 
-            <!-- Tabla de Préstamos Registrados -->
             <div class="col-md-8">
                 <div class="card card-custom p-4 bg-white">
                     <h5 class="mb-3 fw-bold" style="color: var(--color-0e1b48);">Cartera de Préstamos Vigentes</h5>
