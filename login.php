@@ -1,5 +1,9 @@
 <?php
 // login.php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 session_start();
 require_once "conexionDB.php";
 
@@ -26,7 +30,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if ($empleado) {
                 $claveDinamica = strtolower($empleado['nomb_emp']) . "123";
                 
-                // Valida contraseña real en BD OR dinámica (nombre123) OR genérica de rol
                 if ($password === ($empleado['password'] ?? '') || 
                     $password === $claveDinamica || 
                     $password === ($usuario_rol . "123") || 
@@ -44,7 +47,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $error = "La cédula ingresada no corresponde a un " . ucfirst($usuario_rol) . ".";
             }
 
-       } elseif ($usuario_rol === 'cliente') {
+        } elseif ($usuario_rol === 'cliente') {
             // Consulta en la tabla clientes validando id_cliente
             $stmt = $conexion->prepare("SELECT * FROM clientes WHERE id_cliente = :cedula");
             $stmt->execute([':cedula' => $cedula]);
@@ -54,9 +57,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $claveDinamica = strtolower($cliente['nomb_cli']) . "123";
                 
                 // Obtenemos el hash de la BD de forma segura
-                $hashAlmacenado = isset($cliente['password']) ? $cliente['password'] : '';
+                $hashAlmacenado = $cliente['password'] ?? '';
                 
-                // Verificamos si el hash existe y es válido, o si usa claves dinámicas/genéricas
+                // Verificamos el hash con password_verify o las contraseñas alternativas de respaldo
                 $validoPassword = (!empty($hashAlmacenado) && password_verify($password, $hashAlmacenado));
 
                 if ($validoPassword || $password === $claveDinamica || $password === "cliente123") {
@@ -70,7 +73,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $error = "Contraseña incorrecta para el cliente.";
                 }
             } else {
-                $error = "La cédula ingresada no se encuentra registrada.";
+                $error = "La cédula ingresada no se encuentra registrada en la base de datos.";
             }
         } else {
             $error = "Por favor selecciona un rol válido.";
@@ -173,7 +176,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     <p class="text-muted small">Acceso al sistema por perfil</p>
                 </div>
 
-                <?php if ($error): ?>
+                <?php if (!empty($error)): ?>
                     <div class="alert alert-danger py-2 small text-center rounded-4" style="background-color: #f8d7da; color: #842029; border: none;"><?php echo htmlspecialchars($error); ?></div>
                 <?php endif; ?>
 
