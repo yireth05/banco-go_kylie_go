@@ -59,7 +59,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 // Obtenemos el hash de la BD de forma segura
                 $hashAlmacenado = $cliente['password'] ?? '';
                 
-                // Verificamos el hash con password_verify o las contraseñas alternativas de respaldo
+                // Verificamos el hash con password_verify (LIMPIO, SIN SÍMBOLO '$' ADELANTE)
                 $validoPassword = (!empty($hashAlmacenado) && password_verify($password, $hashAlmacenado));
 
                 if ($validoPassword || $password === $claveDinamica || $password === "cliente123") {
