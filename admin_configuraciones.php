@@ -1,9 +1,6 @@
 <?php
-// admin_configuraciones.php
 session_start();
 require_once 'conexionDB.php';
-
-// Permitir el acceso a cualquier usuario autenticado (administrador, cajero o cliente)
 if (!isset($_SESSION['rol'])) {
     header("Location: login.php");
     exit;
@@ -18,7 +15,7 @@ try {
     // 1. Obtener Ciudades
     $ciudades = $conexion->query("SELECT * FROM ciudades ORDER BY id_ciudad")->fetchAll(PDO::FETCH_ASSOC);
 
-    // 2. Obtener Sucursales con sus respectivas ciudades
+    // 2. Obtener sucursales con sus respectivas ciudades
     $sucursales = $conexion->query("
         SELECT s.id_sucursal, s.nomb_sucursal, s.direccion_sucursal, c.nomb_ciudad 
         FROM sucursales s
@@ -26,7 +23,7 @@ try {
         ORDER BY s.id_sucursal
     ")->fetchAll(PDO::FETCH_ASSOC);
 
-    // 3. Obtener Cajeros Automáticos
+    // 3. Obtener cajeros
     $cajeros = $conexion->query("
         SELECT caj.id_cajero, caj.ubicacion, caj.estado, suc.nomb_sucursal 
         FROM cajeros_automaticos caj
@@ -34,7 +31,7 @@ try {
         ORDER BY caj.id_cajero
     ")->fetchAll(PDO::FETCH_ASSOC);
 
-    // 4. Obtener Tipos de Cuenta
+    // 4. Ver tipos de cuenta
     $tipo_cuentas = $conexion->query("SELECT * FROM tipo_cuentas ORDER BY cod_tipo_cuenta")->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
@@ -142,7 +139,6 @@ try {
                 </div>
             </div>
 
-            <!-- TABLA CAJEROS AUTOMÁTICOS -->
             <div class="col-lg-6">
                 <div class="card card-custom p-4 bg-white h-100">
                     <h5 class="fw-bold text-brand mb-3">Cajeros Automáticos</h5>
@@ -179,7 +175,7 @@ try {
                 </div>
             </div>
 
-            <!-- TABLA TIPOS DE CUENTA -->
+
             <div class="col-lg-6">
                 <div class="card card-custom p-4 bg-white h-100">
                     <h5 class="fw-bold text-brand mb-3">Tipos de Cuenta</h5>
@@ -208,7 +204,6 @@ try {
                 </div>
             </div>
 
-            <!-- TABLA CIUDADES OPERATIVAS -->
             <div class="col-lg-6">
                 <div class="card card-custom p-4 bg-white h-100">
                     <h5 class="fw-bold text-brand mb-3">Ciudades Operativas</h5>
