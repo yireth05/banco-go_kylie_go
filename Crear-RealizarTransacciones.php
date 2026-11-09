@@ -254,7 +254,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <?php echo htmlspecialchars($t['nomb_tipo_transaccion']); ?>
                             </option>
                         <?php endforeach; ?>
-                        <option value="3" data-nombre="abono a préstamo" id="opcion_abono_prestamo" class="d-none">Abono a Préstamo</option>
                     </select>
                 </div>
 
