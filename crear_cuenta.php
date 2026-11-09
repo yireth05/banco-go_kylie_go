@@ -1,12 +1,11 @@
 <?php
-// crear_cuenta.php
 session_start();
 require_once "conexionDB.php";
 
 $mensaje = "";
 $error = "";
 
-// 1. Obtener los clientes existentes para el menú desplegable
+// menú desplegable de clientes
 try {
     $stmt_cli = $conexion->query("SELECT id_cliente, nomb_cli, apelli_cli FROM clientes ORDER BY nomb_cli");
     $clientes = $stmt_cli->fetchAll(PDO::FETCH_ASSOC);
