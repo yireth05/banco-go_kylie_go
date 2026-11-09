@@ -13,22 +13,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $direccion  = trim($_POST["direccion"] ?? '');
     $telefono   = trim($_POST["telefono"] ?? '');
     $correo     = trim($_POST["correo"] ?? '');
-s
+
     if (empty($id_cliente) || empty($nomb_cli) || empty($apelli_cli) || empty($password)) {
         $error = "Faltan datos obligatorios por enviar, por favor ingresar datos faltantes.";
+    } elseif (!preg_match('/^[0-9]+$/', $telefono)) {
+        $error = "Error: El número de teléfono solo debe contener dígitos numéricos y no puede incluir caracteres especiales.";
     } else {
-        if (!preg_match('/^[0-9]+$/', $telefono)) {
-        
-        die("Error: El número de teléfono solo debe contener dígitos numéricos y no puede incluir caracteres especiales.");
-    }
         try {
-            // 1. Generar el hash seguro de la contraseña
             $password_hash = password_hash($password, PASSWORD_DEFAULT);
-            
-            // 2. Sentencia SQL con la columna 'password' y 7 marcadores de posición (?)
             $sentencia = $conexion->prepare("INSERT INTO clientes (id_cliente, nomb_cli, apelli_cli, direccion, telefono, correo, password) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            
-            // 3. Ejecutar pasando el hash en el último lugar del arreglo
             $resultado = $sentencia->execute([$id_cliente, $nomb_cli, $apelli_cli, $direccion, $telefono, $correo, $password_hash]);
     
             if ($resultado) {
@@ -93,8 +86,8 @@ s
 
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label for="telefono">Teléfono:</label>
-<input type="tel" id="telefono" name="telefono" pattern="[0-9]+" title="Solo se permiten números" required>
+                        <label for="telefono" class="form-label fw-bold">Teléfono *</label>
+                        <input type="tel" class="form-control" id="telefono" name="telefono" pattern="[0-9]+" title="Solo se permiten números" placeholder="Ej: 3101234567" required>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label for="correo" class="form-label fw-bold">Correo Electrónico</label>
