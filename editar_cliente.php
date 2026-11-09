@@ -1,5 +1,5 @@
 <?php
-// editar_cliente.php - Listado, buscador y formulario de actualización/creación de cuentas
+
 session_start();
 require_once 'conexionDB.php';
 
@@ -12,7 +12,7 @@ $rol = $_SESSION['rol'];
 $error = "";
 $mensaje = "";
 
-// Si es un cliente común, redirigir o manejar sus propios datos
+// Si es un cliente solo ve sus propios datos
 if ($rol === 'cliente') {
     $usuario_id = $_SESSION['usuario_id'] ?? $_SESSION['id_cliente'] ?? null;
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -37,10 +37,9 @@ if ($rol === 'cliente') {
     }
 } 
 else {
-    // SI ES CAJERO O ADMINISTRADOR
+    // para cajero o admins
     $id_cliente = $_GET['id'] ?? null;
 
-    // Si se envió un formulario POST dentro de la edición de un cliente específico
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && $id_cliente) {
         $accion = $_POST['accion'] ?? '';
 
@@ -75,7 +74,6 @@ else {
         }
     }
 
-    // Si hay un ID en la URL, mostramos el panel de edición detallada de ese cliente
     $cliente_a_editar = null;
     $cuentas_cliente = [];
     $tipos_cuenta = [];
@@ -102,7 +100,7 @@ else {
             $error = "Error al obtener la información del cliente: " . $e->getMessage();
         }
     } else {
-        // Si NO hay ID, mostramos la tabla general con el buscador de clientes
+        //buscador de clientes
         $busqueda = trim($_GET['q'] ?? '');
         try {
             if ($busqueda !== '') {
@@ -157,7 +155,7 @@ else {
     <div class="container py-5 mt-3">
         
         <?php if ($rol === 'cliente'): ?>
-            <!-- VISTA CLIENTE -->
+           
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h2 class="fw-bold" style="color: var(--color-0e1b48);">Mis Datos Personales</h2>
@@ -192,10 +190,10 @@ else {
             </div>
 
         <?php else: ?>
-            <!-- VISTA CAJERO / ADMIN -->
+          
             
             <?php if ($id_cliente && $cliente_a_editar): ?>
-                <!-- FORMULARIO DE EDICIÓN Y CREACIÓN DE CUENTA PARA UN CLIENTE ESPECÍFICO -->
+              
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <h2 class="fw-bold" style="color: var(--color-0e1b48);">Gestión Integral de Cliente</h2>
@@ -208,7 +206,7 @@ else {
                 <?php if ($mensaje): ?><div class="alert alert-success rounded-4"><?php echo htmlspecialchars($mensaje); ?></div><?php endif; ?>
 
                 <div class="row g-4">
-                    <!-- Columna 1: Actualizar Datos Personales -->
+                 
                     <div class="col-md-6">
                         <div class="card card-custom p-4 bg-white h-100">
                             <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">Datos Personales</h4>
@@ -235,7 +233,7 @@ else {
                         </div>
                     </div>
 
-                    <!-- Columna 2: Cuentas Asociadas y Crear Cuenta si no tiene -->
+                  
                     <div class="col-md-6">
                         <div class="card card-custom p-4 bg-white h-100 d-flex flex-column">
                             <h4 class="fw-bold mb-3" style="color: var(--color-0e1b48);">Cuentas Bancarias</h4>
@@ -291,7 +289,7 @@ else {
                 </div>
 
             <?php else: ?>
-                <!-- LISTADO GENERAL Y BUSCADOR -->
+          
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <h2 class="fw-bold" style="color: var(--color-0e1b48);">Gestión y Actualización de Clientes</h2>
