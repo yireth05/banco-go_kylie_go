@@ -44,7 +44,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $error = "La cédula ingresada no corresponde a un " . ucfirst($usuario_rol) . ".";
             }
 
-        } elseif ($usuario_rol === 'cliente') {
+       } elseif ($usuario_rol === 'cliente') {
             // Consulta en la tabla clientes validando id_cliente
             $stmt = $conexion->prepare("SELECT * FROM clientes WHERE id_cliente = :cedula");
             $stmt->execute([':cedula' => $cedula]);
@@ -53,10 +53,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if ($cliente) {
                 $claveDinamica = strtolower($cliente['nomb_cli']) . "123";
                 
-                // Valida contraseña real en BD OR dinámica (nombre123) OR genérica
-                if (password_verify($password, $cliente['password'] ?? '') || 
-                    $password === $claveDinamica || 
-                    $password === "cliente123") {
+                // Obtenemos el hash de la BD de forma segura
+                $hashAlmacenado = isset($cliente['password']) ? $cliente['password'] : '';
+                
+                // Verificamos si el hash existe y es válido, o si usa claves dinámicas/genéricas
+                $validoPassword = (!empty($hashAlmacenado) && password_verify($password, $hashAlmacenado));
+
+                if ($validoPassword || $password === $claveDinamica || $password === "cliente123") {
                     
                     $_SESSION['nombres']    = $cliente['nomb_cli'] . ' ' . $cliente['apelli_cli'];
                     $_SESSION['rol']        = 'cliente';
