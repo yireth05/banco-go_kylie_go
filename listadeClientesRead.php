@@ -7,7 +7,7 @@ if (!isset($_SESSION['rol']) || !in_array($_SESSION['rol'], ['administrador', 'c
     exit;
 }
 
-$es_admin = ($_SESSION['rol'] === 'administrador'); // solo el administrador ve contraseñas
+$es_admin = ($_SESSION['rol'] === 'administrador'); // solo el administrador ve el estado de la contraseña
 
 try {
     $sentencia = $conexion->query("SELECT * FROM clientes ORDER BY nomb_cli ASC");
@@ -67,7 +67,13 @@ try {
                                                 <td><?php echo htmlspecialchars($cliente['telefono'] ?? 'N/A'); ?></td>
                                                 <td><?php echo htmlspecialchars($cliente['correo'] ?? 'N/A'); ?></td>
                                                 <?php if ($es_admin): ?>
-                                                    <td><code><?php echo htmlspecialchars($cliente['password'] ?? '—'); ?></code></td>
+                                                    <td>
+                                                        <?php if (!empty($cliente['password'])): ?>
+                                                            <span class="badge bg-success">Establecida</span>
+                                                        <?php else: ?>
+                                                            <span class="badge bg-warning text-dark">Vacía</span>
+                                                        <?php endif; ?>
+                                                    </td>
                                                 <?php endif; ?>
                                                 <td>
                                                     <a href="editar_cliente.php?id=<?php echo urlencode($cliente['id_cliente']); ?>" class="btn btn-warning btn-sm rounded-pill">Editar</a>
