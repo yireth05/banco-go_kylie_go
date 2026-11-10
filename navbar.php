@@ -84,6 +84,8 @@ $rol = $_SESSION['rol'];
             <li class="nav-item"><a class="nav-link" href="estado_cuentas.php">Mi Cuenta</a></li>
             <li class="nav-item"><a class="nav-link" href="Crear-RealizarTransacciones.php">Transferencias</a></li>
         <?php endif; ?>
+
+        <li class="nav-item"><a class="nav-link" href="cambiar_password.php">Mi Contraseña</a></li>
       </ul>
 
       <div class="d-flex align-items-center mt-3 mt-lg-0">
