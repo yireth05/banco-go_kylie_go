@@ -6,6 +6,28 @@ require_once "conexionDB.php";
 
 $error = "";
 
+// ¿El valor guardado es un hash (bcrypt/argon) y no texto plano?
+function es_hash(string $valor): bool {
+    return !empty(password_get_info($valor)['algo']);
+}
+
+// Compara lo escrito con lo guardado. Acepta hash y también texto plano antiguo.
+// $es_plano_antiguo queda en true si coincidió con una clave en texto plano (para convertirla a hash).
+function validar_guardada(string $escrita, string $guardada, bool &$es_plano_antiguo): bool {
+    $es_plano_antiguo = false;
+    if ($guardada === '') {
+        return false;
+    }
+    if (es_hash($guardada)) {
+        return password_verify($escrita, $guardada);
+    }
+    if (hash_equals($guardada, $escrita)) {
+        $es_plano_antiguo = true;
+        return true;
+    }
+    return false;
+}
+
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $usuario_rol = $_POST['usuario'] ?? '';
     $password    = trim($_POST['password'] ?? '');
@@ -18,17 +40,34 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $empleado = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($empleado) {
-                $claveDinamica = strtolower($empleado['nomb_emp']) . "123";
-                $passBD = (string)($empleado['password'] ?? '');
+                // Acepta tanto nomb_emp/apelli_emp como nombres/apellidos (según cómo esté la base)
+                $nombreEmp   = (string)($empleado['nomb_emp'] ?? $empleado['nombres'] ?? '');
+                $apellidoEmp = (string)($empleado['apelli_emp'] ?? $empleado['apellidos'] ?? '');
+                $passBD      = (string)($empleado['password'] ?? '');
+                $ok = false;
 
-                $ok = ($passBD !== '' && ($password === $passBD || (strlen($passBD) > 20 && password_verify($password, $passBD))))
-                      || $password === $claveDinamica
-                      || $password === ($usuario_rol . "123")
-                      || $password === "admin123";
+                if ($passBD !== '') {
+                    // Con contraseña guardada: SOLO vale esa (hash, o texto plano antiguo que se convierte a hash)
+                    $esPlano = false;
+                    $ok = validar_guardada($password, $passBD, $esPlano);
+                    if ($ok && $esPlano) {
+                        try {
+                            $upd = $conexion->prepare("UPDATE empleados SET password = ? WHERE id_empleado = ?");
+                            $upd->execute([password_hash($password, PASSWORD_DEFAULT), $empleado['id_empleado']]);
+                        } catch (PDOException $e) {
+                            // Si no se pudo convertir, igual deja entrar; se reintenta en el próximo ingreso
+                        }
+                    }
+                } else {
+                    // Sin contraseña guardada: valen las claves de respaldo, para poder entrar y asignarla
+                    $ok = $password === strtolower($nombreEmp) . "123"
+                          || $password === ($usuario_rol . "123")
+                          || $password === "admin123";
+                }
 
                 if ($ok) {
                     session_regenerate_id(true);
-                    $_SESSION['nombres']    = $empleado['nomb_emp'] . ' ' . $empleado['apelli_emp'];
+                    $_SESSION['nombres']    = trim($nombreEmp . ' ' . $apellidoEmp);
                     $_SESSION['rol']        = strtolower($empleado['rol']);
                     $_SESSION['usuario_id'] = $empleado['id_empleado'];
                     header("Location: index.php");
@@ -49,8 +88,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $ok = false;
 
                 if ($hash !== '') {
-                    // Cliente con contraseña guardada (hash bcrypt)
-                    $ok = password_verify($password, $hash);
+                    // Cliente con contraseña guardada: hash, o texto plano antiguo (se convierte a hash en este ingreso)
+                    $esPlano = false;
+                    $ok = validar_guardada($password, $hash, $esPlano);
+                    if ($ok && $esPlano) {
+                        $upd = $conexion->prepare("UPDATE clientes SET password = ? WHERE id_cliente = ?");
+                        $upd->execute([password_hash($password, PASSWORD_DEFAULT), $cliente['id_cliente']]);
+                    }
                 } else {
                     // Cliente antiguo sin contraseña: entra con nombre+"123" y se le guarda el hash
                     if ($password === strtolower($cliente['nomb_cli']) . "123") {
