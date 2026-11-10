@@ -29,8 +29,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $error = "Error: El número de teléfono solo debe contener dígitos numéricos y no puede incluir caracteres especiales.";
     } else {
         try {
-            // Por si la tabla se creó con un SQL viejo sin la columna password
-            $conexion->exec("ALTER TABLE clientes ADD COLUMN IF NOT EXISTS password character varying(255)");
+            // Por si la tabla se creó con un SQL viejo sin la columna password.
+            // Solo se hace el ALTER si la columna realmente no existe (así no exige ser dueño de la tabla).
+            $existe = $conexion->prepare(
+                "SELECT 1 FROM information_schema.columns
+                 WHERE table_schema = current_schema() AND table_name = 'clientes' AND column_name = 'password'"
+            );
+            $existe->execute();
+            if (!$existe->fetchColumn()) {
+                $conexion->exec("ALTER TABLE clientes ADD COLUMN password character varying(255)");
+            }
 
             $sentencia = $conexion->prepare(
                 "INSERT INTO clientes (id_cliente, nomb_cli, apelli_cli, direccion, telefono, correo, password)
@@ -43,7 +51,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 ':dir'  => $direccion !== '' ? $direccion : null,
                 ':tel'  => $telefono,
                 ':cor'  => $correo !== '' ? $correo : null,
-                ':pass' => $password,
+                ':pass' => password_hash($password, PASSWORD_DEFAULT), // se guarda con hash, nunca en texto plano
             ]);
 
             // Verificar que realmente quedó guardada
@@ -51,7 +59,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $chk->execute([$id_cliente]);
             $guardada = (string)$chk->fetchColumn();
 
-            if ($guardada !== '' && hash_equals($guardada, $password)) {
+            if ($guardada !== '' && password_verify($password, $guardada)) {
                 $mensaje = "¡Cliente registrado exitosamente con su contraseña!";
             } else {
                 $error = "El cliente se creó pero la contraseña no quedó guardada. Revisa la columna password de la tabla clientes.";
