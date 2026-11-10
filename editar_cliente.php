@@ -23,6 +23,23 @@ function validar_telefono(string $tel): ?string {
     return null;
 }
 
+// Valida la contraseña de un cliente: 4 a 20 caracteres. Devuelve mensaje de error o null.
+function validar_password_nueva(string $pass): ?string {
+    if (strlen($pass) < 4 || strlen($pass) > 20) {
+        return "La nueva contraseña debe tener entre 4 y 20 caracteres.";
+    }
+    return null;
+}
+
+// Compara lo escrito con lo guardado (hash, o texto plano antiguo).
+function coincide_password(string $escrita, string $guardada): bool {
+    if ($guardada === '') return false;
+    if (!empty(password_get_info($guardada)['algo'])) {
+        return password_verify($escrita, $guardada);
+    }
+    return hash_equals($guardada, $escrita);
+}
+
 // Genera un número de cuenta que NO exista todavía en la tabla cuentas.
 function generar_num_cuenta(PDO $db): string {
     $chk = $db->prepare("SELECT 1 FROM cuentas WHERE num_cuenta = ?");
@@ -42,18 +59,27 @@ if ($rol === 'cliente') {
         $apelli = $_POST['apelli_cli'] ?? '';
         $tel = trim($_POST['tel_cli'] ?? '');
         $dir = $_POST['dir_cli'] ?? '';
-        $nueva_pass = trim($_POST['nueva_password'] ?? '');
+        $nueva_pass  = trim($_POST['nueva_password'] ?? '');
+        $actual_pass = trim($_POST['password_actual'] ?? '');
+        $guardada    = '';
+        if ($nueva_pass !== '') {
+            $q = $conexion->prepare("SELECT password FROM clientes WHERE id_cliente = ?");
+            $q->execute([$usuario_id]);
+            $guardada = (string)$q->fetchColumn();
+        }
         if ($err_tel = validar_telefono($tel)) {
             $error = $err_tel;
-        } elseif ($nueva_pass !== '' && (strlen($nueva_pass) < 4 || strlen($nueva_pass) > 20)) {
-            $error = "La nueva contraseña debe tener entre 4 y 20 caracteres.";
+        } elseif ($nueva_pass !== '' && ($err_pass = validar_password_nueva($nueva_pass))) {
+            $error = $err_pass;
+        } elseif ($nueva_pass !== '' && $guardada !== '' && !coincide_password($actual_pass, $guardada)) {
+            $error = "La contraseña actual no es correcta.";
         } else {
             try {
                 $stmt = $conexion->prepare("UPDATE clientes SET nomb_cli = ?, apelli_cli = ?, telefono = ?, direccion = ? WHERE id_cliente = ?");
                 $stmt->execute([$nomb, $apelli, $tel, $dir, $usuario_id]);
                 if ($nueva_pass !== '') {
                     $up = $conexion->prepare("UPDATE clientes SET password = ? WHERE id_cliente = ?");
-                    $up->execute([$nueva_pass, $usuario_id]);
+                    $up->execute([password_hash($nueva_pass, PASSWORD_DEFAULT), $usuario_id]);
                 }
                 $mensaje = "¡Tus datos han sido actualizados exitosamente!" . ($nueva_pass !== '' ? " Tu contraseña fue cambiada." : "");
             } catch (PDOException $e) {
@@ -93,6 +119,22 @@ else {
                 }
             }
         } 
+        elseif ($accion === 'cambiar_password' && $rol === 'administrador') {
+            $nueva_pass = trim($_POST['nueva_password_admin'] ?? '');
+            if ($nueva_pass === '') {
+                $error = "Escribe la nueva contraseña del cliente.";
+            } elseif ($err_pass = validar_password_nueva($nueva_pass)) {
+                $error = $err_pass;
+            } else {
+                try {
+                    $stmt = $conexion->prepare("UPDATE clientes SET password = ? WHERE id_cliente = ?");
+                    $stmt->execute([password_hash($nueva_pass, PASSWORD_DEFAULT), $id_cliente]);
+                    $mensaje = "¡Contraseña del cliente actualizada exitosamente!";
+                } catch (PDOException $e) {
+                    $error = "Error al cambiar la contraseña: " . $e->getMessage();
+                }
+            }
+        }
         elseif ($accion === 'crear_cuenta') {
             $cod_tipo_cuenta = $_POST['cod_tipo_cuenta'] ?? '';
             $saldo_inicial = $_POST['saldo_inicial'] ?? 0.00;
@@ -227,6 +269,10 @@ else {
                         <input type="text" name="dir_cli" class="form-control" value="<?php echo htmlspecialchars($cliente['direccion'] ?? ''); ?>">
                     </div>
                     <div class="mb-3">
+                        <label class="form-label fw-bold">Contraseña actual</label>
+                        <input type="password" name="password_actual" class="form-control" autocomplete="current-password" placeholder="Solo si vas a cambiar la contraseña">
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label fw-bold">Nueva contraseña</label>
                         <input type="password" name="nueva_password" class="form-control" minlength="4" maxlength="20" autocomplete="new-password" placeholder="Déjalo vacío si no quieres cambiarla">
                         <div class="form-text">Entre 4 y 20 caracteres.</div>
@@ -274,14 +320,22 @@ else {
                                     <label class="form-label fw-bold">Dirección</label>
                                     <input type="text" name="dir_cli" class="form-control" value="<?php echo htmlspecialchars($cliente_a_editar['direccion'] ?? ''); ?>">
                                 </div>
-                                <?php if ($rol === 'administrador'): ?>
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">Contraseña del cliente <span class="badge bg-secondary">solo administrador</span></label>
-                                    <input type="text" class="form-control bg-light" value="<?php echo htmlspecialchars($cliente_a_editar['password'] ?? ''); ?>" readonly>
-                                </div>
-                                <?php endif; ?>
                                 <button type="submit" class="btn btn-custom w-100 py-2">Guardar Cambios Personales</button>
                             </form>
+
+                            <?php if ($rol === 'administrador'): ?>
+                            <hr class="my-4">
+                            <h5 class="fw-bold mb-3" style="color: var(--color-0e1b48);">Cambiar contraseña del cliente <span class="badge bg-secondary">solo administrador</span></h5>
+                            <form method="POST" autocomplete="off">
+                                <input type="hidden" name="accion" value="cambiar_password">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Nueva contraseña</label>
+                                    <input type="password" name="nueva_password_admin" class="form-control" minlength="4" maxlength="20" autocomplete="new-password" required placeholder="Entre 4 y 20 caracteres">
+                                    <div class="form-text">Estado actual: <?php echo !empty($cliente_a_editar['password']) ? 'Establecida' : 'Vacía'; ?>. Se guarda cifrada.</div>
+                                </div>
+                                <button type="submit" class="btn btn-dark w-100 py-2">Cambiar Contraseña</button>
+                            </form>
+                            <?php endif; ?>
                         </div>
                     </div>
 
@@ -416,4 +470,3 @@ else {
     </script>
 </body>
 </html>
-
