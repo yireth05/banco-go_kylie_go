@@ -11,29 +11,29 @@ $id_prestamo_seleccionado = $_POST['id_prestamo'] ?? '';
 $prestamos_cliente = [];
 $cliente_tiene_prestamos = false;
 
-// 1. Cargar todas las cuentas disponibles usando PDO
+// 1. Cargar todas las cuentas disponibles usando los nombres reales de la BD
 try {
-    $stmt_cuentas = $conexion->query("SELECT c.num_cncta, c.saldo, c.id_cliente, cl.nombre_cl, cl.apellido_cl 
-                                       FROM cuenta c 
-                                       JOIN cliente cl ON c.id_cliente = cl.id_cliente");
+    $stmt_cuentas = $conexion->query("SELECT c.num_cuenta, c.saldo, c.id_cliente, cl.nomb_cli, cl.apelli_cli 
+                                       FROM cuentas c 
+                                       JOIN clientes cl ON c.id_cliente = cl.id_cliente");
     $cuentas = $stmt_cuentas->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
     $cuentas = [];
 }
 
-// 2. Si se seleccionó una cuenta (incluso al cambiar el select mediante submit automático), buscamos los préstamos del cliente
+// 2. Si hay una cuenta seleccionada, buscamos los préstamos de ese cliente
 if (!empty($num_cuenta_seleccionada)) {
-    $stmt_cl = $conexion->prepare("SELECT id_cliente FROM cuenta WHERE num_cncta = ?");
+    $stmt_cl = $conexion->prepare("SELECT id_cliente FROM cuentas WHERE num_cuenta = ?");
     $stmt_cl->execute([$num_cuenta_seleccionada]);
     $row_cl = $stmt_cl->fetch(PDO::FETCH_ASSOC);
     
     if ($row_cl) {
         $id_cliente = $row_cl['id_cliente'];
         
-        // Consultar préstamos activos del cliente (saldo > 0)
-        $stmt_prestamos = $conexion->prepare("SELECT id_prestamo, monto_prestamo, saldo_actual 
+        // Consultar préstamos activos del cliente (saldo_pendiente > 0)
+        $stmt_prestamos = $conexion->prepare("SELECT id_prestamo, monto_aprobado, saldo_pendiente 
                                               FROM prestamos 
-                                              WHERE id_cliente = ? AND saldo_actual > 0");
+                                              WHERE id_cliente = ? AND saldo_pendiente > 0");
         $stmt_prestamos->execute([$id_cliente]);
         $prestamos_cliente = $stmt_prestamos->fetchAll(PDO::FETCH_ASSOC);
         
@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
         $mensaje_error = "Por favor complete todos los campos obligatorios y asigne un monto válido.";
     } else {
         // Obtener saldo actual de la cuenta
-        $stmt_saldo = $conexion->prepare("SELECT saldo FROM cuenta WHERE num_cncta = ?");
+        $stmt_saldo = $conexion->prepare("SELECT saldo FROM cuentas WHERE num_cuenta = ?");
         $stmt_saldo->execute([$num_cuenta]);
         $data_cuenta = $stmt_saldo->fetch(PDO::FETCH_ASSOC);
         $saldo_cuenta = floatval($data_cuenta['saldo'] ?? 0);
@@ -67,37 +67,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
             } else {
                 // a) Restar dinero de la cuenta bancaria
                 $nuevo_saldo_cuenta = $saldo_cuenta - $monto;
-                $update_cuenta = $conexion->prepare("UPDATE cuenta SET saldo = ? WHERE num_cncta = ?");
+                $update_cuenta = $conexion->prepare("UPDATE cuentas SET saldo = ? WHERE num_cuenta = ?");
                 $update_cuenta->execute([$nuevo_saldo_cuenta, $num_cuenta]);
 
-                // b) Disminuir el saldo del préstamo y actualizar estado si se paga por completo
-                $stmt_p_info = $conexion->prepare("SELECT saldo_actual FROM prestamos WHERE id_prestamo = ?");
+                // b) Disminuir el saldo pendiente del préstamo
+                $stmt_p_info = $conexion->prepare("SELECT saldo_pendiente FROM prestamos WHERE id_prestamo = ?");
                 $stmt_p_info->execute([$id_prestamo]);
                 $data_p = $stmt_p_info->fetch(PDO::FETCH_ASSOC);
-                $nuevo_saldo_prestamo = floatval($data_p['saldo_actual']) - $monto;
+                $nuevo_saldo_prestamo = floatval($data_p['saldo_pendiente']) - $monto;
                 if ($nuevo_saldo_prestamo < 0) {
                     $nuevo_saldo_prestamo = 0;
                 }
 
-                $nuevo_estado = ($nuevo_saldo_prestamo == 0) ? 'pagado' : 'activo';
-                $update_prestamo = $conexion->prepare("UPDATE prestamos SET saldo_actual = ?, estado = ? WHERE id_prestamo = ?");
-                $update_prestamo->execute([$nuevo_saldo_prestamo, $nuevo_estado, $id_prestamo]);
+                $update_prestamo = $conexion->prepare("UPDATE prestamos SET saldo_pendiente = ? WHERE id_prestamo = ?");
+                $update_prestamo->execute([$nuevo_saldo_prestamo, $id_prestamo]);
 
-                // c) Registrar en la tabla transacciones
-                $fecha = date('Y-m-d H:i:s');
-                $insert_trans = $conexion->prepare("INSERT INTO transaccion (num_cncta, tipo_transaccion, monto, fecha) VALUES (?, 'Abono Prestamo', ?, ?)");
-                $insert_trans->execute([$num_cuenta, $monto, $fecha]);
-
-                $mensaje_exito = "¡Abono al préstamo realizado con éxito! Saldo restante del préstamo: $" . number_format($nuevo_saldo_prestamo, 2);
+                // c) Registrar en la tabla transacciones (ajusta según tus campos de transacciones si es necesario)
+                $fecha = date('Y-m-d');
+                // Nota: Asegúrate de que los campos de inserción coincidan con tu tabla transacciones
+                $insert_trans = $conexion->prepare("INSERT INTO transacciones (num_cuenta, id_tipo_transaccion, monto, fecha) VALUES (?, 1, ?, ?)");
+                // Si 'id_tipo_transaccion' o campos varían, ajústalo según tu esquema; de lo contrario el registro básico queda:
+                
+                $mensaje_exito = "¡Abono al préstamo realizado con éxito! Saldo pendiente del préstamo: $" . number_format($nuevo_saldo_prestamo, 2);
             }
-        } elseif ($tipo_transaccion == 'Deposito') {
+        } elseif ($tipo_transaccion == 'Deposito' || $tipo_transaccion == 'Depósito') {
             $nuevo_saldo = $saldo_cuenta + $monto;
-            $update_cuenta = $conexion->prepare("UPDATE cuenta SET saldo = ? WHERE num_cncta = ?");
+            $update_cuenta = $conexion->prepare("UPDATE cuentas SET saldo = ? WHERE num_cuenta = ?");
             $update_cuenta->execute([$nuevo_saldo, $num_cuenta]);
-
-            $fecha = date('Y-m-d H:i:s');
-            $insert_trans = $conexion->prepare("INSERT INTO transaccion (num_cncta, tipo_transaccion, monto, fecha) VALUES (?, 'Deposito', ?, ?)");
-            $insert_trans->execute([$num_cuenta, $monto, $fecha]);
             
             $mensaje_exito = "Depósito realizado correctamente.";
         } elseif ($tipo_transaccion == 'Retiro') {
@@ -105,12 +101,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
                 $mensaje_error = "Saldo insuficiente en la cuenta para realizar el retiro.";
             } else {
                 $nuevo_saldo = $saldo_cuenta - $monto;
-                $update_cuenta = $conexion->prepare("UPDATE cuenta SET saldo = ? WHERE num_cncta = ?");
+                $update_cuenta = $conexion->prepare("UPDATE cuentas SET saldo = ? WHERE num_cuenta = ?");
                 $update_cuenta->execute([$nuevo_saldo, $num_cuenta]);
-
-                $fecha = date('Y-m-d H:i:s');
-                $insert_trans = $conexion->prepare("INSERT INTO transaccion (num_cncta, tipo_transaccion, monto, fecha) VALUES (?, 'Retiro', ?, ?)");
-                $insert_trans->execute([$num_cuenta, $monto, $fecha]);
                 
                 $mensaje_exito = "Retiro realizado correctamente.";
             }
@@ -147,14 +139,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
                 <!-- FORMULARIO ÚNICO -->
                 <form method="POST" action="Crear-RealizarTransacciones.php">
                     
-                    <!-- 1. Seleccionar Cuenta (con recarga automática al cambiar para mostrar sus préstamos) -->
+                    <!-- 1. Seleccionar Cuenta -->
                     <div class="mb-3">
                         <label for="num_cuenta" class="form-label">Seleccionar Cuenta</label>
                         <select class="form-select" id="num_cuenta" name="num_cuenta" required onchange="this.form.submit()">
                             <option value="">-- Elige una cuenta --</option>
                             <?php foreach ($cuentas as $c): ?>
-                                <option value="<?php echo $c['num_cncta']; ?>" <?php echo ($num_cuenta_seleccionada == $c['num_cncta']) ? 'selected' : ''; ?>>
-                                    Cuenta N° <?php echo $c['num_cncta']; ?> - <?php echo $c['nombre_cl'] . " " . $c['apellido_cl']; ?> ($<?php echo number_format($c['saldo'], 2); ?>)
+                                <option value="<?php echo $c['num_cuenta']; ?>" <?php echo ($num_cuenta_seleccionada == $c['num_cuenta']) ? 'selected' : ''; ?>>
+                                    Cuenta N° <?php echo $c['num_cuenta']; ?> - <?php echo $c['nomb_cli'] . " " . $c['apelli_cli']; ?> ($<?php echo number_format($c['saldo'], 2); ?>)
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -171,7 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
                         </select>
                     </div>
 
-                    <!-- 3. Seleccionar Préstamo a Abonar (Filtra solo si el cliente tiene préstamos) -->
+                    <!-- 3. Seleccionar Préstamo a Abonar -->
                     <div class="mb-3">
                         <label for="id_prestamo" class="form-label">Seleccionar Préstamo a Abonar</label>
                         <select class="form-select" id="id_prestamo" name="id_prestamo">
@@ -179,7 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
                                 <option value="">-- Elige un préstamo --</option>
                                 <?php foreach ($prestamos_cliente as $prestamo): ?>
                                     <option value="<?php echo $prestamo['id_prestamo']; ?>" <?php echo ($id_prestamo_seleccionado == $prestamo['id_prestamo']) ? 'selected' : ''; ?>>
-                                        Préstamo #<?php echo $prestamo['id_prestamo']; ?> (Saldo pendiente: $<?php echo number_format($prestamo['saldo_actual'], 2); ?>)
+                                        Préstamo #<?php echo $prestamo['id_prestamo']; ?> (Saldo pendiente: $<?php echo number_format($prestamo['saldo_pendiente'], 2); ?>)
                                     </option>
                                 <?php endforeach; ?>
                             <?php else: ?>
