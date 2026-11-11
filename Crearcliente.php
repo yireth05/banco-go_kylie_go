@@ -26,9 +26,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $error = "La contraseña debe tener entre 4 y 20 caracteres.";
     } elseif (!preg_match('/^[0-9]+$/', $telefono)) {
         $error = "Error: El número de teléfono solo debe contener dígitos numéricos y no puede incluir caracteres especiales.";
-    }elseif (!preg_match('/^[0-9]+$/', $id_cliente) {
-        $error = "Error: La cedula solo debe contener dígitos numéricos y no puede incluir caracteres especiales.";
-    } 
+    }
     else {
         try {
            
