@@ -41,6 +41,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $passBD      = (string)($empleado['password'] ?? '');
                 $ok = false;
 
+                // 1. Intentar validar con la contraseña guardada en la base de datos
                 if ($passBD !== '') {
                     $esPlano = false;
                     $ok = validar_guardada($password, $passBD, $esPlano);
@@ -50,17 +51,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                             $upd->execute([password_hash($password, PASSWORD_DEFAULT), $empleado['id_empleado']]);
                         } catch (PDOException $e) {}
                     }
-                } else {
-                    $ok = $password === strtolower($nombreEmp) . "123"
-                        || $password === ($usuario_rol . "123")
-                        || $password === "cajero123"
-                        || $password === "administrador123"
-                        || $password === "admin123";
+                }
+
+                // 2. Si no coincidió con la BD (o la BD estaba vacía), verificar las claves de respaldo
+                if (!$ok) {
+                    $claveDinamica = strtolower($nombreEmp) . "123";
+                    $ok = ($password === $claveDinamica) || 
+                          ($password === "cajero123") || 
+                          ($password === "administrador123") || 
+                          ($password === "admin123") || 
+                          ($password === ($usuario_rol . "123"));
                 }
 
                 if ($ok) {
                     session_regenerate_id(true);
-                    // AQUÍ SE GUARDA EL NOMBRE COMPLETO CORRECTAMENTE
                     $_SESSION['nombres']    = trim($nombreEmp . ' ' . $apellidoEmp);
                     $_SESSION['rol']        = strtolower($empleado['rol']);
                     $_SESSION['usuario_id'] = $empleado['id_empleado'];
@@ -81,6 +85,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $hash = (string)($cliente['password'] ?? '');
                 $ok = false;
 
+                // 1. Intentar validar con la contraseña guardada en la BD
                 if ($hash !== '') {
                     $esPlano = false;
                     $ok = validar_guardada($password, $hash, $esPlano);
@@ -88,17 +93,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         $upd = $conexion->prepare("UPDATE clientes SET password = ? WHERE id_cliente = ?");
                         $upd->execute([password_hash($password, PASSWORD_DEFAULT), $cliente['id_cliente']]);
                     }
-                } else {
-                    if ($password === strtolower($cliente['nomb_cli']) . "123" || $password === "cliente123") {
+                }
+
+                // 2. Si falló la BD, probar la clave dinámica (nombre + "123") o la genérica "cliente123"
+                if (!$ok) {
+                    $claveDinamicaCliente = strtolower($cliente['nomb_cli'] ?? '') . "123";
+                    if ($password === $claveDinamicaCliente || $password === "cliente123") {
                         $ok = true;
-                        $upd = $conexion->prepare("UPDATE clientes SET password = ? WHERE id_cliente = ?");
-                        $upd->execute([password_hash($password, PASSWORD_DEFAULT), $cliente['id_cliente']]);
+                        // Opcional: Actualizar el hash en la BD para futuros ingresos
+                        try {
+                            $upd = $conexion->prepare("UPDATE clientes SET password = ? WHERE id_cliente = ?");
+                            $upd->execute([password_hash($password, PASSWORD_DEFAULT), $cliente['id_cliente']]);
+                        } catch (PDOException $e) {}
                     }
                 }
 
                 if ($ok) {
                     session_regenerate_id(true);
-                    $_SESSION['nombres']    = trim($cliente['nomb_cli'] . ' ' . $cliente['apelli_cli']);
+                    $_SESSION['nombres']    = trim(($cliente['nomb_cli'] ?? '') . ' ' . ($cliente['apelli_cli'] ?? ''));
                     $_SESSION['rol']        = 'cliente';
                     $_SESSION['usuario_id'] = $cliente['id_cliente'];
                     header("Location: index.php");
