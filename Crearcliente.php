@@ -22,14 +22,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     if ($id_cliente === '' || $nomb_cli === '' || $apelli_cli === '' || $password === '') {
         $error = "Faltan datos obligatorios por enviar, por favor ingresar datos faltantes.";
+    } elseif (!preg_match('/^[0-9]+$/', $id_cliente)) {
+        $error = "Error: La cédula / identificación solo debe contener dígitos numéricos.";
     } elseif (strlen($password) < 4 || strlen($password) > 20) {
         $error = "La contraseña debe tener entre 4 y 20 caracteres.";
-    } elseif (!preg_match('/^[0-9]+$/', $telefono)) {
-        $error = "Error: El número de teléfono solo debe contener dígitos numéricos y no puede incluir caracteres especiales.";
-    }
-    else {
+    } elseif (!empty($telefono) && !preg_match('/^[0-9]+$/', $telefono)) {
+        $error = "Error: El número de teléfono solo debe contener dígitos numéricos.";
+    } else {
         try {
-           
             $existe = $conexion->prepare(
                 "SELECT 1 FROM information_schema.columns
                  WHERE table_schema = current_schema() AND table_name = 'clientes' AND column_name = 'password'"
@@ -48,9 +48,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 ':nom'  => $nomb_cli,
                 ':ape'  => $apelli_cli,
                 ':dir'  => $direccion !== '' ? $direccion : null,
-                ':tel'  => $telefono,
+                ':tel'  => $telefono !== '' ? $telefono : null,
                 ':cor'  => $correo !== '' ? $correo : null,
-                ':pass' => password_hash($password, PASSWORD_DEFAULT), // se guarda con hash, nunca en texto plano
+                ':pass' => password_hash($password, PASSWORD_DEFAULT),
             ]);
 
             $chk = $conexion->prepare("SELECT password FROM clientes WHERE id_cliente = ?");
@@ -99,7 +99,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             <form action="Crearcliente.php" method="POST">
                 <div class="mb-3">
                     <label for="id_cliente" class="form-label fw-bold">Cédula / Identificación *</label>
-                    <input type="text" class="form-control" id="id_cliente" name="id_cliente" required placeholder="Ej: 1006123456">
+                    <input type="text" class="form-control" id="id_cliente" name="id_cliente" required pattern="[0-9]+" inputmode="numeric" title="Solo se permiten números sin letras ni espacios" placeholder="Ej: 1006123456">
                 </div>
 
                 <div class="row">
