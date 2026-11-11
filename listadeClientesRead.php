@@ -9,151 +9,120 @@ if (!isset($_SESSION['rol']) || !in_array($_SESSION['rol'], ['administrador', 'c
 
 $es_admin = ($_SESSION['rol'] === 'administrador'); // solo el administrador ve el estado de la contraseña
 
+$busqueda = trim($_GET['busqueda'] ?? '');
+
 try {
-    $sentencia = $conexion->query("SELECT * FROM clientes ORDER BY nomb_cli ASC");
-    $clientes  = $sentencia->fetchAll(PDO::FETCH_ASSOC);
+    if ($busqueda !== '') {
+        // Consulta filtrada usando ILIKE (ideal para PostgreSQL, ignora mayúsculas/minúsculas)
+        $stmt = $conexion->prepare("
+            SELECT id_cliente, nomb_cli, apelli_cli, direccion, telefono, correo, fecha_registro 
+            FROM clientes 
+            WHERE CAST(id_cliente AS TEXT) ILIKE :busq 
+               OR nomb_cli ILIKE :busq 
+               OR apelli_cli ILIKE :busq 
+               OR correo ILIKE :busq
+            ORDER BY fecha_registro DESC
+        ");
+        $stmt->execute([':busq' => '%' . $busqueda . '%']);
+    } else {
+        // Consulta completa si no hay ningún filtro escrito
+        $stmt = $conexion->query("SELECT id_cliente, nomb_cli, apelli_cli, direccion, telefono, correo, fecha_registro FROM clientes ORDER BY fecha_registro DESC");
+    }
+    $clientes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    die("Error al consultar clientes: " . $e->getMessage());
+    $error = "Error al cargar los clientes: " . $e->getMessage();
 }
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Listado de Clientes - Banco Villavicencio</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Clientes - Banco Villavicencio</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        :root {
+            --color-0e1b48: #0E1B48;
+            --color-c18db4: #C18DB4;
+            --color-e2cad8: #E2CAD8;
+            --color-87a7d0: #87A7D0;
+        }
+        body {
+            background-color: #f8f9fa;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        .text-brand { color: var(--color-0e1b48); }
+        .btn-brand { background-color: var(--color-0e1b48); color: white; border: none; }
+        .btn-brand:hover { background-color: #1a2f6c; color: white; }
+    </style>
 </head>
-<body class="bg-light">
-    <?php if (file_exists("navbar.php")) include_once "navbar.php"; ?>
+<body>
+    <?php include 'navbar.php'; ?>
 
-    <div class="container mt-4 mb-5">
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card shadow border-0 rounded-4">
-                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
-                        <h4 class="mb-0 fs-5">Lista de Clientes - Banco Villavicencio</h4>
-                        <div>
-                            <a href="index.php" class="btn btn-outline-light btn-sm rounded-pill me-2">Volver al Panel</a>
-                            <a href="Crearcliente.php" class="btn btn-success btn-sm rounded-pill">Registrar Nuevo Cliente</a>
-                        </div>
-                    </div>
-                    
-                    <div class="card-body p-4">
-                        <div class="table-responsive">
-                            <table class="table table-striped table-bordered align-middle mb-0">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th>Cédula / ID</th>
-                                        <th>Nombre</th>
-                                        <th>Apellido</th>
-                                        <th>Dirección</th>
-                                        <th>Teléfono</th>
-                                        <th>Correo</th>
-                                        <?php if ($es_admin): ?><th>Contraseña</th><?php endif; ?>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php if (!empty($clientes)): ?>
-                                        <?php foreach($clientes as $cliente): ?>
-                                            <!-- Añadimos un ID dinámico a la fila para poder borrarla con JS -->
-                                            <tr id="fila-<?php echo $cliente['id_cliente']; ?>">
-                                                <td><strong><?php echo htmlspecialchars($cliente['id_cliente']); ?></strong></td>
-                                                <td><?php echo htmlspecialchars($cliente['nomb_cli']); ?></td>
-                                                <td><?php echo htmlspecialchars($cliente['apelli_cli']); ?></td>
-                                                <td><?php echo htmlspecialchars($cliente['direccion'] ?? 'N/A'); ?></td>
-                                                <td><?php echo htmlspecialchars($cliente['telefono'] ?? 'N/A'); ?></td>
-                                                <td><?php echo htmlspecialchars($cliente['correo'] ?? 'N/A'); ?></td>
-                                                <?php if ($es_admin): ?>
-                                                    <td>
-                                                        <?php if (!empty($cliente['password'])): ?>
-                                                            <span class="badge bg-success">Establecida</span>
-                                                        <?php else: ?>
-                                                            <span class="badge bg-warning text-dark">Vacía</span>
-                                                        <?php endif; ?>
-                                                    </td>
-                                                <?php endif; ?>
-                                                <td>
-                                                    <a href="editar_cliente.php?id=<?php echo urlencode($cliente['id_cliente']); ?>" class="btn btn-warning btn-sm rounded-pill">Editar</a>
-                                                    <button type="button" class="btn btn-danger btn-sm rounded-pill" onclick="confirmarEliminacion('<?php echo $cliente['id_cliente']; ?>')">Eliminar</button>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    <?php else: ?>
-                                        <tr id="fila-vacia">
-                                            <td colspan="<?php echo $es_admin ? 8 : 7; ?>" class="text-center text-muted py-4">No hay clientes registrados en la base de datos.</td>
-                                        </tr>
-                                    <?php endif; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+    <div class="container py-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold text-brand">Listado de Clientes</h2>
+                <p class="text-muted mb-0">Gestión y consulta de usuarios registrados</p>
+            </div>
+            <a href="Crearcliente.php" class="btn btn-brand rounded-pill px-4">+ Registrar Nuevo Cliente</a>
+        </div>
+
+        <?php if (isset($error)): ?>
+            <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
+        <?php endif; ?>
+
+        <!-- Formulario de búsqueda basado puramente en PHP/SQL -->
+        <div class="card shadow-sm border-0 rounded-4 p-3 mb-4 bg-white">
+            <form method="GET" action="listadeClientesRead.php" class="input-group">
+                <span class="input-group-text bg-light border-0">🔍</span>
+                <input type="text" name="busqueda" class="form-control border-0 bg-light" placeholder="Buscar por cédula, nombre, apellido o correo..." value="<?php echo htmlspecialchars($busqueda); ?>">
+                <button type="submit" class="btn btn-brand px-4">Buscar</button>
+                <?php if ($busqueda !== ''): ?>
+                    <a href="listadeClientesRead.php" class="btn btn-outline-secondary">Limpiar</a>
+                <?php endif; ?>
+            </form>
+        </div>
+
+        <div class="card shadow-sm border-0 rounded-4 bg-white overflow-hidden">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="py-3 ps-4">Cédula / ID</th>
+                            <th class="py-3">Nombre Completo</th>
+                            <th class="py-3">Dirección</th>
+                            <th class="py-3">Teléfono</th>
+                            <th class="py-3">Correo</th>
+                            <th class="py-3">Fecha Registro</th>
+                            <th class="py-3 text-end pe-4">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (!empty($clientes)): ?>
+                            <?php foreach ($clientes as $c): ?>
+                                <tr>
+                                    <td class="ps-4 fw-bold text-brand"><?php echo htmlspecialchars($c['id_cliente']); ?></td>
+                                    <td><?php echo htmlspecialchars($c['nomb_cli'] . ' ' . $c['apelli_cli']); ?></td>
+                                    <td><?php echo htmlspecialchars($c['direccion']); ?></td>
+                                    <td><?php echo htmlspecialchars($c['telefono']); ?></td>
+                                    <td><?php echo htmlspecialchars($c['correo']); ?></td>
+                                    <td><?php echo htmlspecialchars($c['fecha_registro']); ?></td>
+                                    <td class="text-end pe-4">
+                                        <a href="editar_cliente.php?id=<?php echo $c['id_cliente']; ?>" class="btn btn-sm btn-outline-primary rounded-pill px-3">Editar</a>
+                                        <a href="eliminar_cliente.php?id=<?php echo $c['id_cliente']; ?>" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="return confirm('¿Estás seguro de eliminar este cliente?');">Eliminar</a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">No se encontraron clientes que coincidan con la búsqueda.</td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- Script AJAX para eliminar sin recargar -->
-    <script>
-    function confirmarEliminacion(idCliente) {
-        Swal.fire({
-            title: '¿Estás seguro?',
-            text: "¡Esta acción eliminará al cliente del sistema!",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Sí, eliminar',
-            cancelButtonText: 'Cancelar',
-            reverseButtons: true,
-            customClass: {
-                popup: 'rounded-4 shadow'
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                // Petición AJAX (Fetch API)
-                fetch('eliminar_cliente.php?id=' + idCliente, {
-                    method: 'GET'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Eliminar la fila de la tabla visualmente con una transición suave
-                        const fila = document.getElementById('fila-' + idCliente);
-                        if (fila) {
-                            fila.style.transition = "all 0.5s ease";
-                            fila.style.opacity = "0";
-                            setTimeout(() => fila.remove(), 500);
-                        }
-                        
-                        Swal.fire(
-                            '¡Eliminado!',
-                            'El cliente ha sido borrado exitosamente.',
-                            'success'
-                        );
-                    } else {
-                        // Mostrar error si tiene cuentas o préstamos amarrados
-                        Swal.fire(
-                            'No se pudo eliminar',
-                            data.message,
-                            'error'
-                        );
-                    }
-                })
-                .catch(error => {
-                    Swal.fire(
-                        'Error',
-                        'Ocurrió un error de conexión con el servidor.',
-                        'error'
-                    );
-                });
-            }
-        });
-    }
-    </script>
 </body>
 </html>
