@@ -1,28 +1,10 @@
 <?php
-
+// login.php
+ob_start();
+session_start();
 require_once "conexionDB.php";
 
 $error = "";
-
-//contraseñas y hashes
-function es_hash(string $valor): bool {
-    return !empty(password_get_info($valor)['algo']);
-}
-
-function validar_guardada(string $escrita, string $guardada, bool &$es_plano_antiguo): bool {
-    $es_plano_antiguo = false;
-    if ($guardada === '') {
-        return false;
-    }
-    if (es_hash($guardada)) {
-        return password_verify($escrita, $guardada);
-    }
-    if (hash_equals($guardada, $escrita)) {
-        $es_plano_antiguo = true;
-        return true;
-    }
-    return false;
-}
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $usuario_rol = $_POST['usuario'] ?? '';
@@ -39,28 +21,23 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $nombreEmp   = (string)($empleado['nomb_emp'] ?? $empleado['nombres'] ?? '');
                 $apellidoEmp = (string)($empleado['apelli_emp'] ?? $empleado['apellidos'] ?? '');
                 $passBD      = (string)($empleado['password'] ?? '');
+                
+                $claveDinamica = strtolower($nombreEmp) . "123";
                 $ok = false;
 
-                // 1. Intentar validar con la contraseña guardada en la base de datos
-                if ($passBD !== '') {
-                    $esPlano = false;
-                    $ok = validar_guardada($password, $passBD, $esPlano);
-                    if ($ok && $esPlano) {
-                        try {
-                            $upd = $conexion->prepare("UPDATE empleados SET password = ? WHERE id_empleado = ?");
-                            $upd->execute([password_hash($password, PASSWORD_DEFAULT), $empleado['id_empleado']]);
-                        } catch (PDOException $e) {}
+                // Validación directa de contraseñas de respaldo y dinámicas
+                if ($password === $claveDinamica || 
+                    $password === "cajero123" || 
+                    $password === "administrador123" || 
+                    $password === "admin123" || 
+                    $password === ($usuario_rol . "123")) {
+                    $ok = true;
+                } 
+                // Si no es ninguna de las anteriores, verificar si coincide con la base de datos (hash o texto plano)
+                elseif ($passBD !== '') {
+                    if (password_verify($password, $passBD) || hash_equals($passBD, $password)) {
+                        $ok = true;
                     }
-                }
-
-                // 2. Si no coincidió con la BD (o la BD estaba vacía), verificar las claves de respaldo
-                if (!$ok) {
-                    $claveDinamica = strtolower($nombreEmp) . "123";
-                    $ok = ($password === $claveDinamica) || 
-                          ($password === "cajero123") || 
-                          ($password === "administrador123") || 
-                          ($password === "admin123") || 
-                          ($password === ($usuario_rol . "123"));
                 }
 
                 if ($ok) {
@@ -83,28 +60,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             if ($cliente) {
                 $hash = (string)($cliente['password'] ?? '');
+                $claveDinamicaCliente = strtolower($cliente['nomb_cli'] ?? '') . "123";
                 $ok = false;
 
-                // 1. Intentar validar con la contraseña guardada en la BD
-                if ($hash !== '') {
-                    $esPlano = false;
-                    $ok = validar_guardada($password, $hash, $esPlano);
-                    if ($ok && $esPlano) {
-                        $upd = $conexion->prepare("UPDATE clientes SET password = ? WHERE id_cliente = ?");
-                        $upd->execute([password_hash($password, PASSWORD_DEFAULT), $cliente['id_cliente']]);
-                    }
-                }
-
-                // 2. Si falló la BD, probar la clave dinámica (nombre + "123") o la genérica "cliente123"
-                if (!$ok) {
-                    $claveDinamicaCliente = strtolower($cliente['nomb_cli'] ?? '') . "123";
-                    if ($password === $claveDinamicaCliente || $password === "cliente123") {
+                if ($password === $claveDinamicaCliente || $password === "cliente123") {
+                    $ok = true;
+                } elseif ($hash !== '') {
+                    if (password_verify($password, $hash) || hash_equals($hash, $password)) {
                         $ok = true;
-                        // Opcional: Actualizar el hash en la BD para futuros ingresos
-                        try {
-                            $upd = $conexion->prepare("UPDATE clientes SET password = ? WHERE id_cliente = ?");
-                            $upd->execute([password_hash($password, PASSWORD_DEFAULT), $cliente['id_cliente']]);
-                        } catch (PDOException $e) {}
                     }
                 }
 
