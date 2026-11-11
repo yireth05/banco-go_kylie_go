@@ -12,11 +12,9 @@ $id_prestamo_seleccionado = $_POST['id_prestamo'] ?? '';
 $prestamos_cliente = [];
 $cliente_tiene_prestamos = false;
 
-// Obtener datos del usuario en sesión
 $id_usuario_sesion = $_SESSION['id_cliente'] ?? $_SESSION['usuario_id'] ?? null;
 $rol_sesion = $_SESSION['rol'] ?? 'cliente'; 
 
-// 1. Cargar las cuentas disponibles según el rol
 try {
     if ($rol_sesion === 'cliente') {
         $stmt_cuentas = $conexion->prepare("
@@ -37,13 +35,10 @@ try {
 } catch (Exception $e) {
     $cuentas = [];
 }
-
-// LÓGICA AUTOMÁTICA: Si el cliente solo tiene 1 cuenta, se asigna automáticamente
 if (count($cuentas) === 1) {
     $num_cuenta_seleccionada = $cuentas[0]['num_cuenta'];
 }
 
-// 2. Si hay una cuenta seleccionada, buscamos los préstamos de ese cliente
 if (!empty($num_cuenta_seleccionada)) {
     $stmt_cl = $conexion->prepare("SELECT id_cliente FROM cuentas WHERE num_cuenta = ?");
     $stmt_cl->execute([$num_cuenta_seleccionada]);
@@ -51,7 +46,6 @@ if (!empty($num_cuenta_seleccionada)) {
     
     if ($row_cl) {
         $id_cliente = $row_cl['id_cliente'];
-        
         $stmt_prestamos = $conexion->prepare("
             SELECT id_prestamo, monto_aprobado, saldo_pendiente 
             FROM prestamos 
@@ -66,7 +60,6 @@ if (!empty($num_cuenta_seleccionada)) {
     }
 }
 
-// 3. Procesar la transacción al presionar el botón
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion'])) {
     $num_cuenta = $_POST['num_cuenta'] ?? '';
     $tipo_transaccion = $_POST['tipo_transaccion'] ?? '';
@@ -117,7 +110,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
                 $nuevo_saldo = $saldo_cuenta - $monto;
                 $update_cuenta = $conexion->prepare("UPDATE cuentas SET saldo = ? WHERE num_cuenta = ?");
                 $update_cuenta->execute([$nuevo_saldo, $num_cuenta]);
-                
                 $mensaje_exito = "Retiro realizado correctamente.";
             }
         }
@@ -152,22 +144,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
 
                 <form method="POST" action="Crear-RealizarTransacciones.php">
                     
-                    <!-- 1. SECCIÓN DINÁMICA DE CUENTA -->
                     <div class="mb-3">
                         <label class="form-label">Cuenta Bancaria</label>
                         
                         <?php if (count($cuentas) === 0): ?>
-                            <!-- CASO 0: No tiene cuentas -->
                             <div class="alert alert-warning m-0">No posees cuentas bancarias registradas en el sistema.</div>
                             
                         <?php elseif (count($cuentas) === 1): ?>
-                            <!-- CASO 1: Tiene EXACTAMENTE 1 cuenta -->
                             <input type="text" class="form-control fw-bold bg-white" readonly 
                                    value="Cuenta N° <?php echo $cuentas[0]['num_cuenta']; ?> - <?php echo $cuentas[0]['nomb_cli'] . " " . $cuentas[0]['apelli_cli']; ?> ($<?php echo number_format($cuentas[0]['saldo'], 2); ?>)">
                             <input type="hidden" name="num_cuenta" value="<?php echo $cuentas[0]['num_cuenta']; ?>">
                             
                         <?php else: ?>
-                            <!-- CASO 2: Tiene VARIAS cuentas -->
                             <select class="form-select" id="num_cuenta" name="num_cuenta" required onchange="this.form.submit()">
                                 <option value="">-- Elige una cuenta --</option>
                                 <?php foreach ($cuentas as $c): ?>
@@ -181,7 +169,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
 
                     <?php if (count($cuentas) > 0): ?>
                         
-                        <!-- 2. Tipo de Transacción -->
                         <div class="mb-3">
                             <label for="tipo_transaccion" class="form-label">Tipo de Transacción</label>
                             <select class="form-select" id="tipo_transaccion" name="tipo_transaccion" required>
@@ -193,8 +180,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
                                 <?php endif; ?>
                             </select>
                         </div>
-
-                        <!-- 3. Seleccionar Préstamo a Abonar -->
                         <div class="mb-3">
                             <label for="id_prestamo" class="form-label">Seleccionar Préstamo a Abonar</label>
                             <select class="form-select" id="id_prestamo" name="id_prestamo">
@@ -211,7 +196,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
                             </select>
                         </div>
 
-                        <!-- 4. Monto -->
                         <div class="mb-3">
                             <label for="monto" class="form-label">Monto a Transaccionar ($)</label>
                             <input type="number" step="0.01" class="form-control" id="monto" name="monto" placeholder="0.00" required>
