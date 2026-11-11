@@ -66,8 +66,6 @@ try {
         <?php if (isset($error)): ?>
             <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
-
-        <!-- Formulario de búsqueda basado puramente en PHP/SQL -->
         <div class="card shadow-sm border-0 rounded-4 p-3 mb-4 bg-white">
             <form method="GET" action="listadeClientesRead.php" class="input-group">
                 <span class="input-group-text bg-light border-0">🔍</span>
