@@ -23,7 +23,6 @@ try {
         ORDER BY s.id_sucursal
     ")->fetchAll(PDO::FETCH_ASSOC);
 
-    // 3. Obtener cajeros
     $cajeros = $conexion->query("
         SELECT caj.id_cajero, caj.ubicacion, caj.estado, suc.nomb_sucursal 
         FROM cajeros_automaticos caj
