@@ -1,5 +1,4 @@
 <?php
-// index.php - Panel Principal con Vistas por Rol (Cliente, Cajero, Administrador)
 session_start();
 require_once 'conexionDB.php';
 
@@ -7,9 +6,7 @@ if (!isset($_SESSION['rol'])) {
     header("Location: login.php");
     exit;
 }
-
 $rol = $_SESSION['rol'];
-// Tomamos el nombre completo directamente de la sesión iniciada
 $nombre_usuario = $_SESSION['nombres'] ?? ucfirst($rol);
 ?>
 <!DOCTYPE html>
@@ -110,7 +107,6 @@ $nombre_usuario = $_SESSION['nombres'] ?? ucfirst($rol);
                     <h1 class="display-5 fw-bold mb-2">
                         ¡Bienvenido, <span style="color: var(--color-c18db4);"><?php echo htmlspecialchars($nombre_usuario); ?></span>!
                     </h1>
-                    <!-- Perfil en texto normal limpio -->
                     <p class="fs-5 mb-0 opacity-75">
                         Estás operando bajo el perfil de <span class="fw-semibold text-capitalize"><?php echo htmlspecialchars($rol); ?></span>
                     </p>
@@ -119,7 +115,6 @@ $nombre_usuario = $_SESSION['nombres'] ?? ucfirst($rol);
         </div>
 
         <?php if ($rol === 'administrador'): ?>
-            <!-- SECCIÓN ADMINISTRADOR -->
             <div class="d-flex align-items-center justify-content-between mb-4">
                 <h3 class="fw-bold m-0" style="color: var(--color-0e1b48);">
                     <i class="bi bi-shield-lock-fill me-2"></i>Panel de Administración y Auditoría Global
@@ -179,7 +174,6 @@ $nombre_usuario = $_SESSION['nombres'] ?? ucfirst($rol);
             </div>
 
         <?php elseif ($rol === 'cajero'): ?>
-            <!-- SECCIÓN CAJERO -->
             <div class="d-flex align-items-center justify-content-between mb-4">
                 <h3 class="fw-bold m-0" style="color: var(--color-0e1b48);">
                     <i class="bi bi-display me-2"></i>Ventanilla y Operaciones de Caja
@@ -242,7 +236,6 @@ $nombre_usuario = $_SESSION['nombres'] ?? ucfirst($rol);
             </div>
 
         <?php else: ?>
-            <!-- SECCIÓN CLIENTE -->
             <div class="d-flex align-items-center justify-content-between mb-4">
                 <h3 class="fw-bold m-0" style="color: var(--color-0e1b48);">
                     <i class="bi bi-wallet2 me-2"></i>Mi Portal Financiero
