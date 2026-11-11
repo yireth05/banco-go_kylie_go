@@ -5,7 +5,27 @@ session_start();
 require_once "conexionDB.php";
 
 $error = "";
-
+if ($empleado) {
+                $claveDinamica = strtolower($empleado['nomb_emp']) . "123";
+                
+                // Valida contraseña real en BD, clave dinámica por nombre, o genéricas explícitas
+                if ($password === ($empleado['password'] ?? '') || 
+                    $password === $claveDinamica || 
+                    $password === "cajero123" || 
+                    $password === "administrador123" || 
+                    $password === "admin123") {
+                    
+                    $_SESSION['nombres']    = $empleado['nomb_emp'] . ' ' . $empleado['apelli_emp'];
+                    $_SESSION['rol']        = strtolower($empleado['rol']);
+                    $_SESSION['usuario_id'] = $empleado['id_empleado'];
+                    header("Location: index.php");
+                    exit;
+                } else {
+                    $error = "Contraseña incorrecta para el perfil de " . ucfirst($usuario_rol) . ".";
+                }
+            } else {
+                $error = "La cédula ingresada no corresponde a un " . ucfirst($usuario_rol) . ".";
+            }
 // ¿El valor guardado es un hash (bcrypt/argon) y no texto plano?
 function es_hash(string $valor): bool {
     return !empty(password_get_info($valor)['algo']);
