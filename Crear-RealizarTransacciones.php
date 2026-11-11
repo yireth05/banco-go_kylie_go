@@ -5,13 +5,13 @@ $mensaje_exito = "";
 $mensaje_error = "";
 
 // Variables de control
-$num_cuenta_seleccionada = $_GET['cuenta'] ?? ($_POST['num_cuenta'] ?? '');
+$num_cuenta_seleccionada = $_POST['num_cuenta'] ?? '';
 $tipo_transaccion_seleccionada = $_POST['tipo_transaccion'] ?? 'Deposito';
 $id_prestamo_seleccionado = $_POST['id_prestamo'] ?? '';
 $prestamos_cliente = [];
 $cliente_tiene_prestamos = false;
 
-// 1. Cargar todas las cuentas disponibles usando PDO de forma segura
+// 1. Cargar todas las cuentas disponibles usando PDO
 try {
     $stmt_cuentas = $conexion->query("SELECT c.num_cncta, c.saldo, c.id_cliente, cl.nombre_cl, cl.apellido_cl 
                                        FROM cuenta c 
@@ -21,7 +21,7 @@ try {
     $cuentas = [];
 }
 
-// 2. Si hay una cuenta seleccionada, buscamos los préstamos de ese cliente
+// 2. Si se seleccionó una cuenta (incluso al cambiar el select mediante submit automático), buscamos los préstamos del cliente
 if (!empty($num_cuenta_seleccionada)) {
     $stmt_cl = $conexion->prepare("SELECT id_cliente FROM cuenta WHERE num_cncta = ?");
     $stmt_cl->execute([$num_cuenta_seleccionada]);
@@ -30,7 +30,7 @@ if (!empty($num_cuenta_seleccionada)) {
     if ($row_cl) {
         $id_cliente = $row_cl['id_cliente'];
         
-        // Consultar préstamos activos del cliente
+        // Consultar préstamos activos del cliente (saldo > 0)
         $stmt_prestamos = $conexion->prepare("SELECT id_prestamo, monto_prestamo, saldo_actual 
                                               FROM prestamos 
                                               WHERE id_cliente = ? AND saldo_actual > 0");
@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
     $id_prestamo = $_POST['id_prestamo'] ?? null;
 
     if (empty($num_cuenta) || empty($tipo_transaccion) || $monto <= 0) {
-        $mensaje_error = "Por favor ingrese todos los datos obligatorios y un monto válido.";
+        $mensaje_error = "Por favor complete todos los campos obligatorios y asigne un monto válido.";
     } else {
         // Obtener saldo actual de la cuenta
         $stmt_saldo = $conexion->prepare("SELECT saldo FROM cuenta WHERE num_cncta = ?");
@@ -63,14 +63,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
             if (empty($id_prestamo)) {
                 $mensaje_error = "Debe seleccionar un préstamo activo para realizar el abono.";
             } elseif ($saldo_cuenta < $monto) {
-                $mensaje_error = "Saldo insuficiente en la cuenta para realizar el abono.";
+                $mensaje_error = "Saldo insuficiente en la cuenta para realizar este abono.";
             } else {
-                // a) Restar dinero de la cuenta
+                // a) Restar dinero de la cuenta bancaria
                 $nuevo_saldo_cuenta = $saldo_cuenta - $monto;
                 $update_cuenta = $conexion->prepare("UPDATE cuenta SET saldo = ? WHERE num_cncta = ?");
                 $update_cuenta->execute([$nuevo_saldo_cuenta, $num_cuenta]);
 
-                // b) Disminuir el saldo del préstamo
+                // b) Disminuir el saldo del préstamo y actualizar estado si se paga por completo
                 $stmt_p_info = $conexion->prepare("SELECT saldo_actual FROM prestamos WHERE id_prestamo = ?");
                 $stmt_p_info->execute([$id_prestamo]);
                 $data_p = $stmt_p_info->fetch(PDO::FETCH_ASSOC);
@@ -83,12 +83,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
                 $update_prestamo = $conexion->prepare("UPDATE prestamos SET saldo_actual = ?, estado = ? WHERE id_prestamo = ?");
                 $update_prestamo->execute([$nuevo_saldo_prestamo, $nuevo_estado, $id_prestamo]);
 
-                // c) Registrar transacción
+                // c) Registrar en la tabla transacciones
                 $fecha = date('Y-m-d H:i:s');
                 $insert_trans = $conexion->prepare("INSERT INTO transaccion (num_cncta, tipo_transaccion, monto, fecha) VALUES (?, 'Abono Prestamo', ?, ?)");
                 $insert_trans->execute([$num_cuenta, $monto, $fecha]);
 
-                $mensaje_exito = "¡Abono procesado con éxito! Saldo restante del préstamo: $" . number_format($nuevo_saldo_prestamo, 2);
+                $mensaje_exito = "¡Abono al préstamo realizado con éxito! Saldo restante del préstamo: $" . number_format($nuevo_saldo_prestamo, 2);
             }
         } elseif ($tipo_transaccion == 'Deposito') {
             $nuevo_saldo = $saldo_cuenta + $monto;
@@ -102,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
             $mensaje_exito = "Depósito realizado correctamente.";
         } elseif ($tipo_transaccion == 'Retiro') {
             if ($saldo_cuenta < $monto) {
-                $mensaje_error = "Saldo insuficiente en la cuenta.";
+                $mensaje_error = "Saldo insuficiente en la cuenta para realizar el retiro.";
             } else {
                 $nuevo_saldo = $saldo_cuenta - $monto;
                 $update_cuenta = $conexion->prepare("UPDATE cuenta SET saldo = ? WHERE num_cncta = ?");
@@ -144,29 +144,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
                     <div class="alert alert-success"><?php echo $mensaje_exito; ?></div>
                 <?php endif; ?>
 
-                <!-- Formulario único integrado para que funcione la selección de cuentas y transacciones -->
-                <form method="GET" action="Crear-RealizarTransacciones.php" id="formSeleccionCuenta">
+                <!-- FORMULARIO ÚNICO -->
+                <form method="POST" action="Crear-RealizarTransacciones.php">
+                    
+                    <!-- 1. Seleccionar Cuenta (con recarga automática al cambiar para mostrar sus préstamos) -->
                     <div class="mb-3">
-                        <label class="form-label">Seleccionar Cuenta</label>
-                        <div class="input-group">
-                            <select class="form-select" name="cuenta" required onchange="this.form.submit()">
-                                <option value="">-- Elige una cuenta --</option>
-                                <?php foreach ($cuentas as $c): ?>
-                                    <option value="<?php echo $c['num_cncta']; ?>" <?php echo ($num_cuenta_seleccionada == $c['num_cncta']) ? 'selected' : ''; ?>>
-                                        Cuenta N° <?php echo $c['num_cncta']; ?> - <?php echo $c['nombre_cl'] . " " . $c['apellido_cl']; ?> ($<?php echo number_format($c['saldo'], 2); ?>)
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <noscript><button class="btn btn-outline-secondary" type="submit">Cargar</button></noscript>
-                        </div>
-                        <small class="text-muted">Selecciona una cuenta para habilitar sus opciones y préstamos.</small>
+                        <label for="num_cuenta" class="form-label">Seleccionar Cuenta</label>
+                        <select class="form-select" id="num_cuenta" name="num_cuenta" required onchange="this.form.submit()">
+                            <option value="">-- Elige una cuenta --</option>
+                            <?php foreach ($cuentas as $c): ?>
+                                <option value="<?php echo $c['num_cncta']; ?>" <?php echo ($num_cuenta_seleccionada == $c['num_cncta']) ? 'selected' : ''; ?>>
+                                    Cuenta N° <?php echo $c['num_cncta']; ?> - <?php echo $c['nombre_cl'] . " " . $c['apellido_cl']; ?> ($<?php echo number_format($c['saldo'], 2); ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small class="text-muted">Al elegir una cuenta se cargarán automáticamente los préstamos de su titular.</small>
                     </div>
-                </form>
 
-                <!-- Formulario principal para procesar la transacción -->
-                <form method="POST" action="Crear-RealizarTransacciones.php?cuenta=<?php echo $num_cuenta_seleccionada; ?>">
-                    <input type="hidden" name="num_cuenta" value="<?php echo $num_cuenta_seleccionada; ?>">
-
+                    <!-- 2. Tipo de Transacción (Sin duplicados) -->
                     <div class="mb-3">
                         <label for="tipo_transaccion" class="form-label">Tipo de Transacción</label>
                         <select class="form-select" id="tipo_transaccion" name="tipo_transaccion" required>
@@ -176,6 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
                         </select>
                     </div>
 
+                    <!-- 3. Seleccionar Préstamo a Abonar (Filtra solo si el cliente tiene préstamos) -->
                     <div class="mb-3">
                         <label for="id_prestamo" class="form-label">Seleccionar Préstamo a Abonar</label>
                         <select class="form-select" id="id_prestamo" name="id_prestamo">
@@ -192,6 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
                         </select>
                     </div>
 
+                    <!-- 4. Monto -->
                     <div class="mb-3">
                         <label for="monto" class="form-label">Monto a Transaccionar ($)</label>
                         <input type="number" step="0.01" class="form-control" id="monto" name="monto" placeholder="0.00" required>
