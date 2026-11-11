@@ -8,7 +8,6 @@ if (!isset($_SESSION['rol']) || (!in_array($_SESSION['rol'], ['administrador', '
 }
 
 try {
-    //  unimosla bitácora con la tabla transacciones y el tipo de transacción
     $sql = "
         SELECT 
             b.id_bitacora,
