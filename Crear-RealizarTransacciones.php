@@ -11,16 +11,32 @@ $id_prestamo_seleccionado = $_POST['id_prestamo'] ?? '';
 $prestamos_cliente = [];
 $cliente_tiene_prestamos = false;
 
-// 1. Cargar todas las cuentas disponibles
+$id_usuario_sesion = $_SESSION['id_cliente'] ?? $_SESSION['usuario_id'] ?? null;
+$rol_sesion = $_SESSION['rol'] ?? 'cliente';
+
+// Cargar todas las cuentas disponibles
 try {
-    $stmt_cuentas = $conexion->query("SELECT c.num_cuenta, c.saldo, c.id_cliente, cl.nomb_cli, cl.apelli_cli 
-                                       FROM cuentas c 
-                                       JOIN clientes cl ON c.id_cliente = cl.id_cliente");
+    if ($rol_sesion === 'cliente') {
+        // solo se consultan sus propias cuentas
+        $stmt_cuentas = $conexion->prepare("
+            SELECT c.num_cuenta, c.saldo, c.id_cliente, cl.nomb_cli, cl.apelli_cli 
+            FROM cuentas c 
+            JOIN clientes cl ON c.id_cliente = cl.id_cliente
+            WHERE c.id_cliente = ?
+        ");
+        $stmt_cuentas->execute([$id_usuario_sesion]);
+    } else {
+        // Si es administrador o cajer consulta todas las cuentas
+        $stmt_cuentas = $conexion->query("
+            SELECT c.num_cuenta, c.saldo, c.id_cliente, cl.nomb_cli, cl.apelli_cli 
+            FROM cuentas c 
+            JOIN clientes cl ON c.id_cliente = cl.id_cliente
+        ");
+    }
     $cuentas = $stmt_cuentas->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
     $cuentas = [];
 }
-
 // 2. Si hay una cuenta seleccionada, buscamos los préstamos de ese cliente
 if (!empty($num_cuenta_seleccionada)) {
     $stmt_cl = $conexion->prepare("SELECT id_cliente FROM cuentas WHERE num_cuenta = ?");
