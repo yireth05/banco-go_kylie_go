@@ -1,5 +1,4 @@
 <?php
-// login.php
 ob_start();
 session_start();
 require_once "conexionDB.php";
@@ -8,8 +7,8 @@ $error = "";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $usuario_rol = $_POST['usuario'] ?? '';
-    $password    = trim($_POST['password'] ?? '');
-    $cedula      = trim($_POST['cedula'] ?? '');
+    $password = trim($_POST['password'] ?? '');
+    $cedula = trim($_POST['cedula'] ?? '');
 
     try {
         if ($usuario_rol === 'administrador' || $usuario_rol === 'cajero') {
@@ -25,25 +24,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $claveDinamica = strtolower($nombreEmp) . "123";
                 $ok = false;
 
-                // Validación directa de contraseñas de respaldo y dinámicas
+                //contraseñas por defecto 
                 if ($password === $claveDinamica || 
                     $password === "cajero123" || 
                     $password === "administrador123" || 
                     $password === "admin123" || 
                     $password === ($usuario_rol . "123")) {
-                    $ok = true;
+                    $ok = true;//bandera de control
                 } 
-                // Si no es ninguna de las anteriores, verificar si coincide con la base de datos (hash o texto plano)
+                // verificar si coincide con la base de datos (hash)
                 elseif ($passBD !== '') {
                     if (password_verify($password, $passBD) || hash_equals($passBD, $password)) {
                         $ok = true;
                     }
                 }
-
                 if ($ok) {
                     session_regenerate_id(true);
-                    $_SESSION['nombres']    = trim($nombreEmp . ' ' . $apellidoEmp);
-                    $_SESSION['rol']        = strtolower($empleado['rol']);
+                    $_SESSION['nombres'] = trim($nombreEmp . ' ' . $apellidoEmp);
+                    $_SESSION['rol'] = strtolower($empleado['rol']);
                     $_SESSION['usuario_id'] = $empleado['id_empleado'];
                     header("Location: index.php");
                     exit;
@@ -52,17 +50,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             } else {
                 $error = "La cédula ingresada no corresponde a un " . ucfirst($usuario_rol) . ".";
             }
-
         } elseif ($usuario_rol === 'cliente') {
             $stmt = $conexion->prepare("SELECT * FROM clientes WHERE id_cliente = :cedula");
             $stmt->execute([':cedula' => $cedula]);
             $cliente = $stmt->fetch(PDO::FETCH_ASSOC);
-
             if ($cliente) {
                 $hash = (string)($cliente['password'] ?? '');
                 $claveDinamicaCliente = strtolower($cliente['nomb_cli'] ?? '') . "123";
                 $ok = false;
-
                 if ($password === $claveDinamicaCliente || $password === "cliente123") {
                     $ok = true;
                 } elseif ($hash !== '') {
@@ -70,11 +65,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         $ok = true;
                     }
                 }
-
                 if ($ok) {
-                    session_regenerate_id(true);
-                    $_SESSION['nombres']    = trim(($cliente['nomb_cli'] ?? '') . ' ' . ($cliente['apelli_cli'] ?? ''));
-                    $_SESSION['rol']        = 'cliente';
+                    session_regenerate_id(true);//id se sesionde segurida
+                    $_SESSION['nombres'] = trim(($cliente['nomb_cli'] ?? '') . ' ' . ($cliente['apelli_cli'] ?? ''));
+                    $_SESSION['rol'] = 'cliente';
                     $_SESSION['usuario_id'] = $cliente['id_cliente'];
                     header("Location: index.php");
                     exit;
@@ -158,7 +152,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         function toggleCedula(select) {
             var campoCedula = document.getElementById('campo-cedula');
             var labelCedula = document.getElementById('label-cedula');
-            
             if (select.value === 'cliente') {
                 campoCedula.style.display = 'block';
                 labelCedula.innerText = 'Número de Cédula (ID Cliente)';
@@ -183,11 +176,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     <h3 class="fw-bold text-brand mb-1">Banco Villavicencio</h3>
                     <p class="text-muted small">Acceso al sistema por perfil</p>
                 </div>
-
                 <?php if (!empty($error)): ?>
                     <div class="alert alert-danger py-2 small text-center rounded-4" style="background-color: #f8d7da; color: #842029; border: none;"><?php echo htmlspecialchars($error); ?></div>
                 <?php endif; ?>
-
                 <form method="POST" action="login.php">
                     <div class="mb-3">
                         <label class="form-label">Seleccionar Tipo de Usuario</label>
@@ -198,17 +189,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                             <option value="cliente">Cliente</option>
                         </select>
                     </div>
-
                     <div class="mb-3" id="campo-cedula" style="display: none;">
                         <label class="form-label" id="label-cedula">Identificación / Cédula</label>
                         <input type="text" name="cedula" id="cedula-input" class="form-control form-control-custom" placeholder="Ingrese ID o Cédula">
                     </div>
-
                     <div class="mb-4">
                         <label class="form-label">Contraseña</label>
                         <input type="password" name="password" class="form-control form-control-custom" placeholder="••••••••" required>
                     </div>
-
                     <button type="submit" class="btn btn-custom w-100 mt-2">Iniciar Sesión</button>
                 </form>
             </div>
