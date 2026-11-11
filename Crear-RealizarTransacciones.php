@@ -11,30 +11,31 @@ $id_prestamo_seleccionado = $_POST['id_prestamo'] ?? '';
 $prestamos_cliente = [];
 $cliente_tiene_prestamos = false;
 
-// 1. Cargar todas las cuentas disponibles
-$query_cuentas = "SELECT c.num_cncta, c.saldo, c.id_cliente, cl.nombre_cl, cl.apellido_cl 
-                  FROM cuenta c 
-                  JOIN cliente cl ON c.id_cliente = cl.id_cliente";
-$res_cuentas = mysqli_query($conexion, $query_cuentas);
+// 1. Cargar todas las cuentas disponibles usando PDO
+try {
+    $stmt_cuentas = $conexion->query("SELECT c.num_cncta, c.saldo, c.id_cliente, cl.nombre_cl, cl.apellido_cl 
+                                       FROM cuenta c 
+                                       JOIN cliente cl ON c.id_cliente = cl.id_cliente");
+    $cuentas = $stmt_cuentas->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $cuentas = [];
+}
 
 // 2. Si hay una cuenta seleccionada, buscamos los préstamos de ese cliente
 if (!empty($num_cuenta_seleccionada)) {
-    $sql_cliente = "SELECT id_cliente FROM cuenta WHERE num_cncta = '$num_cuenta_seleccionada'";
-    $res_cl = mysqli_query($conexion, $sql_cliente);
-    if ($res_cl && $row_cl = mysqli_fetch_assoc($res_cl)) {
+    $stmt_cl = $conexion->prepare("SELECT id_cliente FROM cuenta WHERE num_cncta = ?");
+    $stmt_cl->execute([$num_cuenta_seleccionada]);
+    $row_cl = $stmt_cl->fetch(PDO::FETCH_ASSOC);
+    
+    if ($row_cl) {
         $id_cliente = $row_cl['id_cliente'];
         
         // Consultar préstamos activos del cliente
-        $sql_prestamos = "SELECT id_prestamo, monto_prestamo, saldo_actual 
-                          FROM prestamos 
-                          WHERE id_cliente = '$id_cliente' AND saldo_actual > 0";
-        $res_prestamos = mysqli_query($conexion, $sql_prestamos);
-        
-        if ($res_prestamos) {
-            while ($p = mysqli_fetch_assoc($res_prestamos)) {
-                $prestamos_cliente[] = $p;
-            }
-        }
+        $stmt_prestamos = $conexion->prepare("SELECT id_prestamo, monto_prestamo, saldo_actual 
+                                              FROM prestamos 
+                                              WHERE id_cliente = ? AND saldo_actual > 0");
+        $stmt_prestamos->execute([$id_cliente]);
+        $prestamos_cliente = $stmt_prestamos->fetchAll(PDO::FETCH_ASSOC);
         
         if (count($prestamos_cliente) > 0) {
             $cliente_tiene_prestamos = true;
@@ -53,8 +54,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
         $mensaje_error = "Por favor ingrese todos los datos obligatorios y un monto válido.";
     } else {
         // Obtener saldo actual de la cuenta
-        $res_saldo = mysqli_query($conexion, "SELECT saldo FROM cuenta WHERE num_cncta = '$num_cuenta'");
-        $data_cuenta = mysqli_fetch_assoc($res_saldo);
+        $stmt_saldo = $conexion->prepare("SELECT saldo FROM cuenta WHERE num_cncta = ?");
+        $stmt_saldo->execute([$num_cuenta]);
+        $data_cuenta = $stmt_saldo->fetch(PDO::FETCH_ASSOC);
         $saldo_cuenta = floatval($data_cuenta['saldo'] ?? 0);
 
         if ($tipo_transaccion == 'Abonar a Préstamo') {
@@ -65,39 +67,51 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
             } else {
                 // a) Restar dinero de la cuenta
                 $nuevo_saldo_cuenta = $saldo_cuenta - $monto;
-                mysqli_query($conexion, "UPDATE cuenta SET saldo = $nuevo_saldo_cuenta WHERE num_cncta = '$num_cuenta'");
+                $update_cuenta = $conexion->prepare("UPDATE cuenta SET saldo = ? WHERE num_cncta = ?");
+                $update_cuenta->execute([$nuevo_saldo_cuenta, $num_cuenta]);
 
                 // b) Disminuir el saldo del préstamo
-                $sql_p_info = mysqli_query($conexion, "SELECT saldo_actual FROM prestamos WHERE id_prestamo = '$id_prestamo'");
-                $data_p = mysqli_fetch_assoc($sql_p_info);
+                $stmt_p_info = $conexion->prepare("SELECT saldo_actual FROM prestamos WHERE id_prestamo = ?");
+                $stmt_p_info->execute([$id_prestamo]);
+                $data_p = $stmt_p_info->fetch(PDO::FETCH_ASSOC);
                 $nuevo_saldo_prestamo = floatval($data_p['saldo_actual']) - $monto;
                 if ($nuevo_saldo_prestamo < 0) {
                     $nuevo_saldo_prestamo = 0;
                 }
 
                 $nuevo_estado = ($nuevo_saldo_prestamo == 0) ? 'pagado' : 'activo';
-                mysqli_query($conexion, "UPDATE prestamos SET saldo_actual = $nuevo_saldo_prestamo, estado = '$nuevo_estado' WHERE id_prestamo = '$id_prestamo'");
+                $update_prestamo = $conexion->prepare("UPDATE prestamos SET saldo_actual = ?, estado = ? WHERE id_prestamo = ?");
+                $update_prestamo->execute([$nuevo_saldo_prestamo, $nuevo_estado, $id_prestamo]);
 
                 // c) Registrar transacción
                 $fecha = date('Y-m-d H:i:s');
-                mysqli_query($conexion, "INSERT INTO transaccion (num_cncta, tipo_transaccion, monto, fecha) VALUES ('$num_cuenta', 'Abono Prestamo', $monto, '$fecha')");
+                $insert_trans = $conexion->prepare("INSERT INTO transaccion (num_cncta, tipo_transaccion, monto, fecha) VALUES (?, 'Abono Prestamo', ?, ?)");
+                $insert_trans->execute([$num_cuenta, $monto, $fecha]);
 
                 $mensaje_exito = "¡Abono procesado con éxito! Saldo restante del préstamo: $" . number_format($nuevo_saldo_prestamo, 2);
             }
         } elseif ($tipo_transaccion == 'Deposito') {
             $nuevo_saldo = $saldo_cuenta + $monto;
-            mysqli_query($conexion, "UPDATE cuenta SET saldo = $nuevo_saldo WHERE num_cncta = '$num_cuenta'");
+            $update_cuenta = $conexion->prepare("UPDATE cuenta SET saldo = ? WHERE num_cncta = ?");
+            $update_cuenta->execute([$nuevo_saldo, $num_cuenta]);
+
             $fecha = date('Y-m-d H:i:s');
-            mysqli_query($conexion, "INSERT INTO transaccion (num_cncta, tipo_transaccion, monto, fecha) VALUES ('$num_cuenta', 'Deposito', $monto, '$fecha')");
+            $insert_trans = $conexion->prepare("INSERT INTO transaccion (num_cncta, tipo_transaccion, monto, fecha) VALUES (?, 'Deposito', ?, ?)");
+            $insert_trans->execute([$num_cuenta, $monto, $fecha]);
+            
             $mensaje_exito = "Depósito realizado correctamente.";
         } elseif ($tipo_transaccion == 'Retiro') {
             if ($saldo_cuenta < $monto) {
                 $mensaje_error = "Saldo insuficiente en la cuenta.";
             } else {
                 $nuevo_saldo = $saldo_cuenta - $monto;
-                mysqli_query($conexion, "UPDATE cuenta SET saldo = $nuevo_saldo WHERE num_cncta = '$num_cuenta'");
+                $update_cuenta = $conexion->prepare("UPDATE cuenta SET saldo = ? WHERE num_cncta = ?");
+                $update_cuenta->execute([$nuevo_saldo, $num_cuenta]);
+
                 $fecha = date('Y-m-d H:i:s');
-                mysqli_query($conexion, "INSERT INTO transaccion (num_cncta, tipo_transaccion, monto, fecha) VALUES ('$num_cuenta', 'Retiro', $monto, '$fecha')");
+                $insert_trans = $conexion->prepare("INSERT INTO transaccion (num_cncta, tipo_transaccion, monto, fecha) VALUES (?, 'Retiro', ?, ?)");
+                $insert_trans->execute([$num_cuenta, $monto, $fecha]);
+                
                 $mensaje_exito = "Retiro realizado correctamente.";
             }
         }
@@ -136,18 +150,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
                     <form method="GET" action="Crear-RealizarTransacciones.php" class="input-group">
                         <select class="form-select" name="cuenta" required>
                             <option value="">-- Elige una cuenta --</option>
-                            <?php 
-                            if ($res_cuentas) {
-                                mysqli_data_seek($res_cuentas, 0);
-                                while ($c = mysqli_fetch_assoc($res_cuentas)): 
-                            ?>
+                            <?php foreach ($cuentas as $c): ?>
                                 <option value="<?php echo $c['num_cncta']; ?>" <?php echo ($num_cuenta_seleccionada == $c['num_cncta']) ? 'selected' : ''; ?>>
                                     Cuenta N° <?php echo $c['num_cncta']; ?> - <?php echo $c['nombre_cl'] . " " . $c['apellido_cl']; ?> ($<?php echo number_format($c['saldo'], 2); ?>)
                                 </option>
-                            <?php 
-                                endwhile; 
-                            }
-                            ?>
+                            <?php endforeach; ?>
                         </select>
                         <button class="btn btn-outline-secondary" type="submit">Cargar Préstamos</button>
                     </form>
@@ -161,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
                         <label for="tipo_transaccion" class="form-label">Tipo de Transacción</label>
                         <select class="form-select" id="tipo_transaccion" name="tipo_transaccion" required>
                             <option value="Deposito" <?php echo ($tipo_transaccion_seleccionada == 'Deposito') ? 'selected' : ''; ?>>Depósito</option>
-                            <option value="Retiro" <?php echo ($tipo_transaccion_seleccionada == 'Retiro') ? 'selected' : ''; ?>>Retiro</option>
+                            <option value="Retiro" <?php echo ($tipo_transspan_seleccionada ?? '') == 'Retiro' ? 'selected' : ''; ?>>Retiro</option>
                             <option value="Abonar a Préstamo" <?php echo ($tipo_transaccion_seleccionada == 'Abonar a Préstamo') ? 'selected' : ''; ?>>Abonar a Préstamo</option>
                         </select>
                     </div>
