@@ -20,16 +20,18 @@ try {
         if ($res) {
             $nombre_usuario = $res['nomb_cli'] . ' ' . $res['apelli_cli'];
         }
-    } else {
-        $nombre_usuario = ucfirst($rol) . " del Sistema";
-        if ($usuario_id) {
-            $stmt = $conexion->prepare("SELECT nomb_cli, apelli_cli FROM clientes WHERE id_cliente = ?");
-            $stmt->execute([$usuario_id]);
-            $res = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($res) {
-                $nombre_usuario = $res['nomb_cli'] . ' ' . $res['apelli_cli'];
-            }
+    } elseif (($rol === 'administrador' || $rol === 'cajero') && $usuario_id) {
+        // CORREGIDO: Consulta en la tabla empleados para administradores y cajeros
+        $stmt = $conexion->prepare("SELECT nomb_emp, apelli_emp FROM empleados WHERE id_empleado = ?");
+        $stmt->execute([$usuario_id]);
+        $res = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($res) {
+            $nombre_usuario = $res['nomb_emp'] . ' ' . $res['apelli_emp'];
+        } else {
+            $nombre_usuario = ucfirst($rol) . " del Sistema";
         }
+    } else {
+        $nombre_usuario = ucfirst($rol);
     }
 } catch (PDOException $e) {
     $nombre_usuario = ucfirst($rol);
@@ -122,12 +124,8 @@ try {
     </style>
 </head>
 <body>
-
-    <?php include 'navbar.php'; ?>
-
+<?php include 'navbar.php'; ?>
     <div class="container py-5">
-        
-        <!-- Hero de Bienvenida -->
         <div class="welcome-hero p-4 p-md-5 mb-5">
             <div class="row align-items-center">
                 <div class="col-md-10">
