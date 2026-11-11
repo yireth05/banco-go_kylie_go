@@ -1,228 +1,191 @@
 <?php
-// Crear-RealizarTransacciones.php
-session_start();
-require_once "conexionDB.php";
+include("conexionDB.php");
 
-$mensaje = "";
-$error = "";
+$mensaje_exito = "";
+$mensaje_error = "";
 
-// 1. Obtener cuentas del banco con su respectivo cliente y verificar si tienen préstamos
-try {
-    $stmtCuentas = $conexion->query("
-        SELECT c.num_cuenta, c.tipo_cuenta, c.saldo, cl.id_cliente, cl.nomb_cli, cl.apelli_cli 
-        FROM cuentas c 
-        JOIN clientes cl ON c.id_cliente = cl.id_cliente 
-        ORDER BY c.num_cuenta ASC
-    ");
-    $cuentas = $stmtCuentas->fetchAll(PDO::FETCH_ASSOC);
+// Variables para controlar la cuenta y préstamo seleccionados
+$num_cuenta_seleccionada = $_POST['num_cuenta'] ?? '';
+$id_prestamo_seleccionado = $_POST['id_prestamo'] ?? '';
+$prestamos_cliente = [];
+$cliente_tiene_prestamos = false;
 
-    // Obtener todos los préstamos existentes para asociarlos
-    $stmtPrestamos = $conexion->query("SELECT * FROM prestamos ORDER BY id_prestamo ASC");
-    $prestamos = $stmtPrestamos->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    $error = "Error al cargar datos: " . $e->getMessage();
-    $cuentas = [];
-    $prestamos = [];
+// 1. Cargar todas las cuentas disponibles
+$query_cuentas = "SELECT c.num_cncta, c.saldo, c.id_cliente, cl.nombre_cl, cl.apellido_cl 
+                  FROM cuenta c 
+                  JOIN cliente cl ON c.id_cliente = cl.id_cliente";
+$res_cuentas = mysqli_query($conexion, $query_cuentas);
+
+// 2. Si el usuario ya eligió una cuenta, buscamos los préstamos del cliente dueño de esa cuenta
+if (!empty($num_cuenta_seleccionada)) {
+    $sql_cliente = "SELECT id_cliente FROM cuenta WHERE num_cncta = '$num_cuenta_seleccionada'";
+    $res_cl = mysqli_query($conexion, $sql_cliente);
+    if ($row_cl = mysqli_fetch_assoc($res_cl)) {
+        $id_cliente = $row_cl['id_cliente'];
+        
+        // Consultar préstamos con saldo pendiente de este cliente
+        $sql_prestamos = "SELECT id_prestamo, monto_prestamo, saldo_actual 
+                          FROM prestamos 
+                          WHERE id_cliente = '$id_cliente' AND saldo_actual > 0";
+        $res_prestamos = mysqli_query($conexion, $sql_prestamos);
+        
+        while ($p = mysqli_fetch_assoc($res_prestamos)) {
+            $prestamos_cliente[] = $p;
+        }
+        
+        if (count($prestamos_cliente) > 0) {
+            $cliente_tiene_prestamos = true;
+        }
+    }
 }
 
-// 2. Procesar la transacción cuando se envía el formulario
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $num_cuenta   = trim($_POST['num_cuenta'] ?? '');
-    $tipo_trans   = trim($_POST['tipo_transaccion'] ?? '');
-    $monto        = floatval($_POST['monto'] ?? 0);
-    $id_prestamo  = trim($_POST['id_prestamo'] ?? '');
+// 3. Procesar la transacción cuando presione "Procesar Transacción"
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion'])) {
+    $num_cuenta = $_POST['num_cuenta'];
+    $tipo_transaccion = $_POST['tipo_transaccion'];
+    $monto = floatval($_POST['monto']);
+    $id_prestamo = $_POST['id_prestamo'] ?? null;
 
-    if ($num_cuenta === '' || $tipo_trans === '' || $monto <= 0) {
-        $error = "Por favor completa todos los campos obligatorios correctamente.";
+    if (empty($num_cuenta) || empty($tipo_transaccion) || $monto <= 0) {
+        $mensaje_error = "Por favor ingrese todos los datos válidos.";
     } else {
-        try {
-            $conexion->beginTransaction();
+        // Obtener saldo actual de la cuenta
+        $res_saldo = mysqli_query($conexion, $sql_saldo_q = "SELECT saldo FROM cuenta WHERE num_cncta = '$num_cuenta'");
+        $data_cuenta = mysqli_fetch_assoc($res_saldo);
+        $saldo_cuenta = floatval($data_cuenta['saldo']);
 
-            // Verificar saldo y cuenta origen
-            $stmtCta = $conexion->prepare("SELECT saldo, id_cliente FROM cuentas WHERE num_cuenta = ?");
-            $stmtCta->execute([$num_cuenta]);
-            $cuentaData = $stmtCta->fetch(PDO::FETCH_ASSOC);
+        if ($tipo_transaccion == 'Abonar a Préstamo') {
+            if (empty($id_prestamo)) {
+                $mensaje_error = "Debe seleccionar un préstamo activo para realizar el abono.";
+            } elseif ($saldo_cuenta < $monto) {
+                $mensaje_error = "Saldo insuficiente en la cuenta para realizar el abono.";
+            } else {
+                // a) Restar dinero de la cuenta bancaria
+                $nuevo_saldo_cuenta = $saldo_cuenta - $monto;
+                mysqli_query($conexion, "UPDATE cuenta SET saldo = $nuevo_saldo_cuenta WHERE num_cncta = '$num_cuenta'");
 
-            if (!$cuentaData) {
-                throw new Exception("La cuenta seleccionada no existe.");
-            }
-
-            $saldoActual = floatval($cuentaData['saldo']);
-
-            if ($tipo_trans === 'retiro' && $saldoActual < $monto) {
-                throw new Exception("Saldo insuficiente para realizar el retiro.");
-            }
-
-            // Calcular nuevo saldo en cuenta según el tipo de transacción
-            if ($tipo_trans === 'deposito') {
-                $nuevoSaldo = $saldoActual + $monto;
-                $updCta = $conexion->prepare("UPDATE cuentas SET saldo = ? WHERE num_cuenta = ?");
-                $updCta->execute([$nuevoSaldo, $num_cuenta]);
-            } elseif ($tipo_trans === 'retiro') {
-                $nuevoSaldo = $saldoActual - $monto;
-                $updCta = $conexion->prepare("UPDATE cuentas SET saldo = ? WHERE num_cuenta = ?");
-                $updCta->execute([$nuevoSaldo, $num_cuenta]);
-            } elseif ($tipo_trans === 'abono_prestamo') {
-                if ($id_prestamo === '') {
-                    throw new Exception("Debe seleccionar un préstamo válido para abonar.");
+                // b) Disminuir el saldo del préstamo
+                $sql_p_info = mysqli_query($conexion, "SELECT saldo_actual FROM prestamos WHERE id_prestamo = '$id_prestamo'");
+                $data_p = mysqli_fetch_assoc($sql_p_info);
+                $nuevo_saldo_prestamo = floatval($data_p['saldo_actual']) - $monto;
+                if ($nuevo_saldo_prestamo < 0) {
+                    $nuevo_saldo_prestamo = 0;
                 }
 
-                if ($saldoActual < $monto) {
-                    throw new Exception("Saldo insuficiente en la cuenta para realizar el abono al préstamo.");
-                }
+                // Definir estado del préstamo
+                $nuevo_estado = ($nuevo_saldo_prestamo == 0) ? 'pagado' : 'activo';
 
-                // Descontar de la cuenta
-                $nuevoSaldo = $saldoActual - $monto;
-                $updCta = $conexion->prepare("UPDATE cuentas SET saldo = ? WHERE num_cuenta = ?");
-                $updCta->execute([$nuevoSaldo, $num_cuenta]);
+                mysqli_query($conexion, "UPDATE prestamos SET saldo_actual = $nuevo_saldo_prestamo, estado = '$nuevo_estado' WHERE id_prestamo = '$id_prestamo'");
 
-                // Disminuir el valor del préstamo en la base de datos
-                $updPrestamo = $conexion->prepare("UPDATE prestamos SET valor_prestamo = valor_prestamo - ? WHERE id_prestamo = ?");
-                $updPrestamo->execute([$monto, $id_prestamo]);
+                // c) Registrar la transacción en el historial
+                $fecha = date('Y-m-d H:i:s');
+                mysqli_query($conexion, "INSERT INTO transaccion (num_cncta, tipo_transaccion, monto, fecha) VALUES ('$num_cuenta', 'Abono Prestamo', $monto, '$fecha')");
+
+                $mensaje_exito = "¡Abono al préstamo procesado con éxito! El saldo restante del préstamo es: $" . number_format($nuevo_saldo_prestamo, 2);
             }
-
-            // Registrar en el historial de transacciones (si aplica la tabla)
-            $stmtIns = $conexion->prepare("
-                INSERT INTO transacciones (num_cuenta, tipo_transaccion, monto, fecha_transaccion) 
-                VALUES (?, ?, ?, NOW())
-            ");
-            $stmtIns->execute([$num_cuenta, $tipo_trans, $monto]);
-
-            $conexion->commit();
-            $mensaje = "Transacción procesada con éxito.";
-        } catch (Exception $e) {
-            $conexion->rollBack();
-            $error = "Error en la transacción: " . $e->getMessage();
+        } elseif ($tipo_transaccion == 'Deposito') {
+            $nuevo_saldo = $saldo_cuenta + $monto;
+            mysqli_query($conexion, "UPDATE cuenta SET saldo = $nuevo_saldo WHERE num_cncta = '$num_cuenta'");
+            $fecha = date('Y-m-d H:i:s');
+            mysqli_query($conexion, "INSERT INTO transaccion (num_cncta, tipo_transaccion, monto, fecha) VALUES ('$num_cuenta', 'Deposito', $monto, '$fecha')");
+            $mensaje_exito = "Depósito realizado correctamente.";
+        } elseif ($tipo_transaccion == 'Retiro') {
+            if ($saldo_cuenta < $monto) {
+                $mensaje_error = "Saldo insuficiente.";
+            } else {
+                $nuevo_saldo = $saldo_cuenta - $monto;
+                mysqli_query($conexion, "UPDATE cuenta SET saldo = $nuevo_saldo WHERE num_cncta = '$num_cuenta'");
+                $fecha = date('Y-m-d H:i:s');
+                mysqli_query($conexion, "INSERT INTO transaccion (num_cncta, tipo_transaccion, monto, fecha) VALUES ('$num_cuenta', 'Retiro', $monto, '$fecha')");
+                $mensaje_exito = "Retiro realizado correctamente.";
+            }
         }
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Realizar Transacciones - Banco Villavicencio</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script>
-        // Mapeo de préstamos por cliente para mostrar dinámicamente en el selector
-        const prestamosPorCliente = {
-            <?php 
-            // Agrupar préstamos por id_cliente para filtrado en JavaScript
-            $prestamosCliente = [];
-            foreach($prestamos as $p) {
-                // Asumiendo que la tabla prestamos tiene id_cliente o se relaciona por cuenta
-                $cliId = $p['id_cliente'] ?? '';
-                if($cliId) {
-                    $prestamosCliente[$cliId][] = $p;
-                }
-            }
-            // Si la relación es directa por cliente:
-            foreach($cuentas as $c) {
-                $cId = $c['id_cliente'];
-                // Buscar préstamos que coincidan con este cliente
-                echo "'$cId': [";
-                foreach($prestamos as $p) {
-                    if(isset($p['id_cliente']) && $p['id_cliente'] == $cId) {
-                        echo "{id: '{$p['id_prestamo']}', monto: '{$p['valor_prestamo']}'},";
-                    }
-                }
-                echo "],";
-            }
-            ?>
-        };
-
-        function actualizarFormulario() {
-            const selectCuenta = document.getElementById('num_cuenta');
-            const selectTipo = document.getElementById('tipo_transaccion');
-            const seccionPrestamo = document.getElementById('seccion-prestamo');
-            const selectPrestamo = document.getElementById('id_prestamo');
-
-            // Obtener el cliente ID de la cuenta seleccionada
-            const optionSeleccionada = selectCuenta.options[selectCuenta.selectedIndex];
-            const clienteId = optionSeleccionada.getAttribute('data-cliente');
-            const tipoSeleccionado = selectTipo.value;
-
-            // Mostrar u ocultar la opción de abonar préstamo según si el cliente tiene préstamos
-            const prestamosDelCliente = prestamosPorCliente[clienteId] || [];
-            
-            if (tipoSeleccionado === 'abono_prestamo') {
-                seccionPrestamo.style.display = 'block';
-                selectPrestamo.required = true;
-
-                // Rellenar el select de préstamos del cliente
-                selectPrestamo.innerHTML = '<option value="" disabled selected>-- Seleccione un préstamo --</option>';
-                prestamosDelCliente.forEach(p => {
-                    let opt = document.createElement('option');
-                    opt.value = p.id;
-                    opt.textContent = `Préstamo ID: ${p.id} - Saldo Pendiente: $${parseFloat(p.monto).toLocaleString()}`;
-                    selectPrestamo.appendChild(opt);
-                });
-
-                if(prestamosDelCliente.length === 0) {
-                    selectPrestamo.innerHTML = '<option value="" disabled selected>Este cliente no tiene préstamos activos</option>';
-                }
-            } else {
-                seccionPrestamo.style.display = 'none';
-                selectPrestamo.required = false;
-            }
-        }
-    </script>
+    <title">Banco Villavicencio - Realizar Transacción</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-    <?php include 'navbar.php'; ?>
 
-    <div class="container py-5" style="max-width: 600px;">
-        <div class="card shadow-sm border-0 rounded-4 p-4 bg-white">
-            <h3 class="fw-bold text-primary mb-3 text-center">Realizar Transacción</h3>
+<?php include("navbar.php"); ?>
 
-            <?php if (!empty($mensaje)): ?>
-                <div class="alert alert-success py-2 text-center"><?php echo htmlspecialchars($mensaje); ?></div>
-            <?php endif; ?>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-sm p-4">
+                <h3 class="text-center text-primary mb-4">Realizar Transacción</h3>
 
-            <?php if (!empty($error)): ?>
-                <div class="alert alert-danger py-2 text-center"><?php echo htmlspecialchars($error); ?></div>
-            <?php endif; ?>
+                <?php if (!empty($mensaje_error)): ?>
+                    <div class="alert alert-danger"><?php echo $mensaje_error; ?></div>
+                <?php endif; ?>
 
-            <form method="POST" action="Crear-RealizarTransacciones.php">
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Seleccionar Cuenta</label>
-                    <select name="num_cuenta" id="num_cuenta" class="form-select" onchange="actualizarFormulario()" required>
-                        <option value="" disabled selected>-- Elige una cuenta --</option>
-                        <?php foreach ($cuentas as $c): ?>
-                            <option value="<?php echo $c['num_cuenta']; ?>" data-cliente="<?php echo $c['id_cliente']; ?>">
-                                Cuenta #<?php echo $c['num_cuenta']; ?> - <?php echo htmlspecialchars($c['nomb_cli'] . ' ' . $c['apelli_cli']); ?> (Saldo: $<?php echo number_format($c['saldo'], 2); ?>)
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
+                <?php if (!empty($mensaje_exito)): ?>
+                    <div class="alert alert-success"><?php echo $mensaje_exito; ?></div>
+                <?php endif; ?>
 
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Tipo de Transacción</label>
-                    <select name="tipo_transaccion" id="tipo_transaccion" class="form-select" onchange="actualizarFormulario()" required>
-                        <option value="" disabled selected>-- Seleccione tipo --</option>
-                        <option value="deposito">Depósito</option>
-                        <option value="retiro">Retiro</option>
-                        <option value="abono_prestamo">Abonar a Préstamo</option> <!-- Única opción sin duplicar -->
-                    </select>
-                </div>
+                <form method="POST" action="Crear-RealizarTransacciones.php">
+                    <!-- 1. Selección de Cuenta -->
+                    <div class="mb-3">
+                        <label for="num_cuenta" class="form-label">Seleccionar Cuenta</label>
+                        <select class="form-select" id="num_cuenta" name="num_cuenta" onchange="this.form.submit()">
+                            <option value="">-- Elige una cuenta --</option>
+                            <?php 
+                            mysqli_data_seek($res_cuentas, 0);
+                            while ($c = mysqli_fetch_assoc($res_cuentas)): 
+                            ?>
+                                <option value="<?php echo $c['num_cncta']; ?>" <?php echo ($num_cuenta_seleccionada == $c['num_cncta']) ? 'selected' : ''; ?>>
+                                    Cuenta N° <?php echo $c['num_cncta']; ?> - <?php echo $c['nombre_cl'] . " " . $c['apellido_cl']; ?> ($<?php echo number_format($c['saldo'], 2); ?>)
+                                </option>
+                            <?php endwhile; ?>
+                        </select>
+                        <small class="text-muted">Al cambiar de cuenta se cargarán sus préstamos automáticamente.</small>
+                    </div>
 
-                <!-- Sección dinámica para seleccionar préstamo (solo si aplica) -->
-                <div class="mb-3" id="seccion-prestamo" style="display: none;">
-                    <label class="form-label fw-semibold">Seleccionar Préstamo a Abonar</label>
-                    <select name="id_prestamo" id="id_prestamo" class="form-select">
-                        <option value="" disabled selected>-- Seleccione un préstamo --</option>
-                    </select>
-                </div>
+                    <!-- 2. Tipo de Transacción (Sin duplicados) -->
+                    <div class="mb-3">
+                        <label for="tipo_transaccion" class="form-label">Tipo de Transacción</label>
+                        <select class="form-select" id="tipo_transaccion" name="tipo_transaccion">
+                            <option value="Deposito">Depósito</option>
+                            <option value="Retiro">Retiro</option>
+                            <option value="Abonar a Préstamo">Abonar a Préstamo</option>
+                        </select>
+                    </div>
 
-                <div class="mb-4">
-                    <label class="form-label fw-semibold">Monto a Transaccionar ($)</label>
-                    <input type="number" step="0.01" name="monto" class="form-control" placeholder="0.00" required>
-                </div>
+                    <!-- 3. Selección de Préstamo (Solo si tiene préstamos activos el cliente) -->
+                    <div class="mb-3">
+                        <label for="id_prestamo" class="form-label">Seleccionar Préstamo a Abonar</label>
+                        <select class="form-select" id="id_prestamo" name="id_prestamo">
+                            <?php if ($cliente_tiene_prestamos): ?>
+                                <option value="">-- Elige un préstamo --</option>
+                                <?php foreach ($prestamos_cliente as $prestamo): ?>
+                                    <option value="<?php echo $prestamo['id_prestamo']; ?>" <?php echo ($id_prestamo_seleccionado == $prestamo['id_prestamo']) ? 'selected' : ''; ?>>
+                                        Préstamo #<?php echo $prestamo['id_prestamo']; ?> (Saldo pendiente: $<?php echo number_format($prestamo['saldo_actual'], 2); ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <option value="">Este cliente no tiene préstamos activos</option>
+                            <?php endif; ?>
+                        </select>
+                    </div>
 
-                <button type="submit" class="btn btn-primary w-100 rounded-pill py-2 fw-semibold">Procesar Transacción</button>
-            </form>
+                    <!-- 4. Monto -->
+                    <div class="mb-3">
+                        <label for="monto" class="form-label">Monto a Transaccionar ($)</label>
+                        <input type="number" step="0.01" class="form-control" id="monto" name="monto" placeholder="0.00" required>
+                    </div>
+
+                    <button type="submit" name="procesar_transaccion" class="btn btn-primary w-100">Procesar Transacción</button>
+                </form>
+            </div>
         </div>
     </div>
+</div>
+
 </body>
 </html>
