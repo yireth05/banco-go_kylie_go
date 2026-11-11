@@ -4,8 +4,9 @@ include("conexionDB.php");
 $mensaje_exito = "";
 $mensaje_error = "";
 
-// Variables para controlar la cuenta y préstamo seleccionados
-$num_cuenta_seleccionada = $_POST['num_cuenta'] ?? '';
+// Variables de control
+$num_cuenta_seleccionada = $_GET['cuenta'] ?? ($_POST['num_cuenta'] ?? '');
+$tipo_transaccion_seleccionada = $_POST['tipo_transaccion'] ?? 'Deposito';
 $id_prestamo_seleccionado = $_POST['id_prestamo'] ?? '';
 $prestamos_cliente = [];
 $cliente_tiene_prestamos = false;
@@ -16,21 +17,23 @@ $query_cuentas = "SELECT c.num_cncta, c.saldo, c.id_cliente, cl.nombre_cl, cl.ap
                   JOIN cliente cl ON c.id_cliente = cl.id_cliente";
 $res_cuentas = mysqli_query($conexion, $query_cuentas);
 
-// 2. Si el usuario ya eligió una cuenta, buscamos los préstamos del cliente dueño de esa cuenta
+// 2. Si hay una cuenta seleccionada, buscamos los préstamos de ese cliente
 if (!empty($num_cuenta_seleccionada)) {
     $sql_cliente = "SELECT id_cliente FROM cuenta WHERE num_cncta = '$num_cuenta_seleccionada'";
     $res_cl = mysqli_query($conexion, $sql_cliente);
-    if ($row_cl = mysqli_fetch_assoc($res_cl)) {
+    if ($res_cl && $row_cl = mysqli_fetch_assoc($res_cl)) {
         $id_cliente = $row_cl['id_cliente'];
         
-        // Consultar préstamos con saldo pendiente de este cliente
+        // Consultar préstamos activos del cliente
         $sql_prestamos = "SELECT id_prestamo, monto_prestamo, saldo_actual 
                           FROM prestamos 
                           WHERE id_cliente = '$id_cliente' AND saldo_actual > 0";
         $res_prestamos = mysqli_query($conexion, $sql_prestamos);
         
-        while ($p = mysqli_fetch_assoc($res_prestamos)) {
-            $prestamos_cliente[] = $p;
+        if ($res_prestamos) {
+            while ($p = mysqli_fetch_assoc($res_prestamos)) {
+                $prestamos_cliente[] = $p;
+            }
         }
         
         if (count($prestamos_cliente) > 0) {
@@ -39,20 +42,20 @@ if (!empty($num_cuenta_seleccionada)) {
     }
 }
 
-// 3. Procesar la transacción cuando presione "Procesar Transacción"
+// 3. Procesar la transacción cuando se presione el botón principal
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion'])) {
-    $num_cuenta = $_POST['num_cuenta'];
-    $tipo_transaccion = $_POST['tipo_transaccion'];
-    $monto = floatval($_POST['monto']);
+    $num_cuenta = $_POST['num_cuenta'] ?? '';
+    $tipo_transaccion = $_POST['tipo_transaccion'] ?? '';
+    $monto = floatval($_POST['monto'] ?? 0);
     $id_prestamo = $_POST['id_prestamo'] ?? null;
 
     if (empty($num_cuenta) || empty($tipo_transaccion) || $monto <= 0) {
-        $mensaje_error = "Por favor ingrese todos los datos válidos.";
+        $mensaje_error = "Por favor ingrese todos los datos obligatorios y un monto válido.";
     } else {
         // Obtener saldo actual de la cuenta
-        $res_saldo = mysqli_query($conexion, $sql_saldo_q = "SELECT saldo FROM cuenta WHERE num_cncta = '$num_cuenta'");
+        $res_saldo = mysqli_query($conexion, "SELECT saldo FROM cuenta WHERE num_cncta = '$num_cuenta'");
         $data_cuenta = mysqli_fetch_assoc($res_saldo);
-        $saldo_cuenta = floatval($data_cuenta['saldo']);
+        $saldo_cuenta = floatval($data_cuenta['saldo'] ?? 0);
 
         if ($tipo_transaccion == 'Abonar a Préstamo') {
             if (empty($id_prestamo)) {
@@ -60,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
             } elseif ($saldo_cuenta < $monto) {
                 $mensaje_error = "Saldo insuficiente en la cuenta para realizar el abono.";
             } else {
-                // a) Restar dinero de la cuenta bancaria
+                // a) Restar dinero de la cuenta
                 $nuevo_saldo_cuenta = $saldo_cuenta - $monto;
                 mysqli_query($conexion, "UPDATE cuenta SET saldo = $nuevo_saldo_cuenta WHERE num_cncta = '$num_cuenta'");
 
@@ -72,16 +75,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
                     $nuevo_saldo_prestamo = 0;
                 }
 
-                // Definir estado del préstamo
                 $nuevo_estado = ($nuevo_saldo_prestamo == 0) ? 'pagado' : 'activo';
-
                 mysqli_query($conexion, "UPDATE prestamos SET saldo_actual = $nuevo_saldo_prestamo, estado = '$nuevo_estado' WHERE id_prestamo = '$id_prestamo'");
 
-                // c) Registrar la transacción en el historial
+                // c) Registrar transacción
                 $fecha = date('Y-m-d H:i:s');
                 mysqli_query($conexion, "INSERT INTO transaccion (num_cncta, tipo_transaccion, monto, fecha) VALUES ('$num_cuenta', 'Abono Prestamo', $monto, '$fecha')");
 
-                $mensaje_exito = "¡Abono al préstamo procesado con éxito! El saldo restante del préstamo es: $" . number_format($nuevo_saldo_prestamo, 2);
+                $mensaje_exito = "¡Abono procesado con éxito! Saldo restante del préstamo: $" . number_format($nuevo_saldo_prestamo, 2);
             }
         } elseif ($tipo_transaccion == 'Deposito') {
             $nuevo_saldo = $saldo_cuenta + $monto;
@@ -91,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
             $mensaje_exito = "Depósito realizado correctamente.";
         } elseif ($tipo_transaccion == 'Retiro') {
             if ($saldo_cuenta < $monto) {
-                $mensaje_error = "Saldo insuficiente.";
+                $mensaje_error = "Saldo insuficiente en la cuenta.";
             } else {
                 $nuevo_saldo = $saldo_cuenta - $monto;
                 mysqli_query($conexion, "UPDATE cuenta SET saldo = $nuevo_saldo WHERE num_cncta = '$num_cuenta'");
@@ -108,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title">Banco Villavicencio - Realizar Transacción</title>
+    <title>Banco Villavicencio - Realizar Transacción</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
@@ -129,35 +130,42 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
                     <div class="alert alert-success"><?php echo $mensaje_exito; ?></div>
                 <?php endif; ?>
 
-                <form method="POST" action="Crear-RealizarTransacciones.php">
-                    <!-- 1. Selección de Cuenta -->
-                    <div class="mb-3">
-                        <label for="num_cuenta" class="form-label">Seleccionar Cuenta</label>
-                        <select class="form-select" id="num_cuenta" name="num_cuenta" onchange="this.form.submit()">
+                <!-- Formulario para cargar los préstamos de la cuenta seleccionada -->
+                <div class="mb-3">
+                    <label class="form-label">Seleccionar Cuenta</label>
+                    <form method="GET" action="Crear-RealizarTransacciones.php" class="input-group">
+                        <select class="form-select" name="cuenta" required>
                             <option value="">-- Elige una cuenta --</option>
                             <?php 
-                            mysqli_data_seek($res_cuentas, 0);
-                            while ($c = mysqli_fetch_assoc($res_cuentas)): 
+                            if ($res_cuentas) {
+                                mysqli_data_seek($res_cuentas, 0);
+                                while ($c = mysqli_fetch_assoc($res_cuentas)): 
                             ?>
                                 <option value="<?php echo $c['num_cncta']; ?>" <?php echo ($num_cuenta_seleccionada == $c['num_cncta']) ? 'selected' : ''; ?>>
                                     Cuenta N° <?php echo $c['num_cncta']; ?> - <?php echo $c['nombre_cl'] . " " . $c['apellido_cl']; ?> ($<?php echo number_format($c['saldo'], 2); ?>)
                                 </option>
-                            <?php endwhile; ?>
+                            <?php 
+                                endwhile; 
+                            }
+                            ?>
                         </select>
-                        <small class="text-muted">Al cambiar de cuenta se cargarán sus préstamos automáticamente.</small>
-                    </div>
+                        <button class="btn btn-outline-secondary" type="submit">Cargar Préstamos</button>
+                    </form>
+                </div>
 
-                    <!-- 2. Tipo de Transacción (Sin duplicados) -->
+                <!-- Formulario principal de la Transacción -->
+                <form method="POST" action="Crear-RealizarTransacciones.php?cuenta=<?php echo $num_cuenta_seleccionada; ?>">
+                    <input type="hidden" name="num_cuenta" value="<?php echo $num_cuenta_seleccionada; ?>">
+
                     <div class="mb-3">
                         <label for="tipo_transaccion" class="form-label">Tipo de Transacción</label>
-                        <select class="form-select" id="tipo_transaccion" name="tipo_transaccion">
-                            <option value="Deposito">Depósito</option>
-                            <option value="Retiro">Retiro</option>
-                            <option value="Abonar a Préstamo">Abonar a Préstamo</option>
+                        <select class="form-select" id="tipo_transaccion" name="tipo_transaccion" required>
+                            <option value="Deposito" <?php echo ($tipo_transaccion_seleccionada == 'Deposito') ? 'selected' : ''; ?>>Depósito</option>
+                            <option value="Retiro" <?php echo ($tipo_transaccion_seleccionada == 'Retiro') ? 'selected' : ''; ?>>Retiro</option>
+                            <option value="Abonar a Préstamo" <?php echo ($tipo_transaccion_seleccionada == 'Abonar a Préstamo') ? 'selected' : ''; ?>>Abonar a Préstamo</option>
                         </select>
                     </div>
 
-                    <!-- 3. Selección de Préstamo (Solo si tiene préstamos activos el cliente) -->
                     <div class="mb-3">
                         <label for="id_prestamo" class="form-label">Seleccionar Préstamo a Abonar</label>
                         <select class="form-select" id="id_prestamo" name="id_prestamo">
@@ -174,7 +182,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
                         </select>
                     </div>
 
-                    <!-- 4. Monto -->
                     <div class="mb-3">
                         <label for="monto" class="form-label">Monto a Transaccionar ($)</label>
                         <input type="number" step="0.01" class="form-control" id="monto" name="monto" placeholder="0.00" required>
@@ -182,6 +189,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
 
                     <button type="submit" name="procesar_transaccion" class="btn btn-primary w-100">Procesar Transacción</button>
                 </form>
+
             </div>
         </div>
     </div>
