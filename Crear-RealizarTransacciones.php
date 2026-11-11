@@ -11,7 +11,7 @@ $id_prestamo_seleccionado = $_POST['id_prestamo'] ?? '';
 $prestamos_cliente = [];
 $cliente_tiene_prestamos = false;
 
-// 1. Cargar todas las cuentas disponibles usando PDO
+// 1. Cargar todas las cuentas disponibles usando PDO de forma segura
 try {
     $stmt_cuentas = $conexion->query("SELECT c.num_cncta, c.saldo, c.id_cliente, cl.nombre_cl, cl.apellido_cl 
                                        FROM cuenta c 
@@ -144,23 +144,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
                     <div class="alert alert-success"><?php echo $mensaje_exito; ?></div>
                 <?php endif; ?>
 
-                <!-- Formulario para cargar los préstamos de la cuenta seleccionada -->
-                <div class="mb-3">
-                    <label class="form-label">Seleccionar Cuenta</label>
-                    <form method="GET" action="Crear-RealizarTransacciones.php" class="input-group">
-                        <select class="form-select" name="cuenta" required>
-                            <option value="">-- Elige una cuenta --</option>
-                            <?php foreach ($cuentas as $c): ?>
-                                <option value="<?php echo $c['num_cncta']; ?>" <?php echo ($num_cuenta_seleccionada == $c['num_cncta']) ? 'selected' : ''; ?>>
-                                    Cuenta N° <?php echo $c['num_cncta']; ?> - <?php echo $c['nombre_cl'] . " " . $c['apellido_cl']; ?> ($<?php echo number_format($c['saldo'], 2); ?>)
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                        <button class="btn btn-outline-secondary" type="submit">Cargar Préstamos</button>
-                    </form>
-                </div>
+                <!-- Formulario único integrado para que funcione la selección de cuentas y transacciones -->
+                <form method="GET" action="Crear-RealizarTransacciones.php" id="formSeleccionCuenta">
+                    <div class="mb-3">
+                        <label class="form-label">Seleccionar Cuenta</label>
+                        <div class="input-group">
+                            <select class="form-select" name="cuenta" required onchange="this.form.submit()">
+                                <option value="">-- Elige una cuenta --</option>
+                                <?php foreach ($cuentas as $c): ?>
+                                    <option value="<?php echo $c['num_cncta']; ?>" <?php echo ($num_cuenta_seleccionada == $c['num_cncta']) ? 'selected' : ''; ?>>
+                                        Cuenta N° <?php echo $c['num_cncta']; ?> - <?php echo $c['nombre_cl'] . " " . $c['apellido_cl']; ?> ($<?php echo number_format($c['saldo'], 2); ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <noscript><button class="btn btn-outline-secondary" type="submit">Cargar</button></noscript>
+                        </div>
+                        <small class="text-muted">Selecciona una cuenta para habilitar sus opciones y préstamos.</small>
+                    </div>
+                </form>
 
-                <!-- Formulario principal de la Transacción -->
+                <!-- Formulario principal para procesar la transacción -->
                 <form method="POST" action="Crear-RealizarTransacciones.php?cuenta=<?php echo $num_cuenta_seleccionada; ?>">
                     <input type="hidden" name="num_cuenta" value="<?php echo $num_cuenta_seleccionada; ?>">
 
@@ -168,7 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
                         <label for="tipo_transaccion" class="form-label">Tipo de Transacción</label>
                         <select class="form-select" id="tipo_transaccion" name="tipo_transaccion" required>
                             <option value="Deposito" <?php echo ($tipo_transaccion_seleccionada == 'Deposito') ? 'selected' : ''; ?>>Depósito</option>
-                            <option value="Retiro" <?php echo ($tipo_transspan_seleccionada ?? '') == 'Retiro' ? 'selected' : ''; ?>>Retiro</option>
+                            <option value="Retiro" <?php echo ($tipo_transaccion_seleccionada == 'Retiro') ? 'selected' : ''; ?>>Retiro</option>
                             <option value="Abonar a Préstamo" <?php echo ($tipo_transaccion_seleccionada == 'Abonar a Préstamo') ? 'selected' : ''; ?>>Abonar a Préstamo</option>
                         </select>
                     </div>
