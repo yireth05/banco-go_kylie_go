@@ -11,7 +11,7 @@ $id_prestamo_seleccionado = $_POST['id_prestamo'] ?? '';
 $prestamos_cliente = [];
 $cliente_tiene_prestamos = false;
 
-// 1. Cargar todas las cuentas disponibles usando los nombres reales de la BD
+// 1. Cargar todas las cuentas disponibles
 try {
     $stmt_cuentas = $conexion->query("SELECT c.num_cuenta, c.saldo, c.id_cliente, cl.nomb_cli, cl.apelli_cli 
                                        FROM cuentas c 
@@ -82,12 +82,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
                 $update_prestamo = $conexion->prepare("UPDATE prestamos SET saldo_pendiente = ? WHERE id_prestamo = ?");
                 $update_prestamo->execute([$nuevo_saldo_prestamo, $id_prestamo]);
 
-                // c) Registrar en la tabla transacciones (ajusta según tus campos de transacciones si es necesario)
-                $fecha = date('Y-m-d');
-                // Nota: Asegúrate de que los campos de inserción coincidan con tu tabla transacciones
-                $insert_trans = $conexion->prepare("INSERT INTO transacciones (num_cuenta, id_tipo_transaccion, monto, fecha) VALUES (?, 1, ?, ?)");
-                // Si 'id_tipo_transaccion' o campos varían, ajústalo según tu esquema; de lo contrario el registro básico queda:
-                
                 $mensaje_exito = "¡Abono al préstamo realizado con éxito! Saldo pendiente del préstamo: $" . number_format($nuevo_saldo_prestamo, 2);
             }
         } elseif ($tipo_transaccion == 'Deposito' || $tipo_transaccion == 'Depósito') {
@@ -150,16 +144,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['procesar_transaccion']
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <small class="text-muted">Al elegir una cuenta se cargarán automáticamente los préstamos de su titular.</small>
+                        <small class="text-muted">Al elegir una cuenta se validará si su titular posee préstamos activos.</small>
                     </div>
 
-                    <!-- 2. Tipo de Transacción (Sin duplicados) -->
+                    <!-- 2. Tipo de Transacción (Se oculta o se muestra dinámicamente "Abonar a Préstamo") -->
                     <div class="mb-3">
                         <label for="tipo_transaccion" class="form-label">Tipo de Transacción</label>
                         <select class="form-select" id="tipo_transaccion" name="tipo_transaccion" required>
                             <option value="Deposito" <?php echo ($tipo_transaccion_seleccionada == 'Deposito') ? 'selected' : ''; ?>>Depósito</option>
                             <option value="Retiro" <?php echo ($tipo_transaccion_seleccionada == 'Retiro') ? 'selected' : ''; ?>>Retiro</option>
-                            <option value="Abonar a Préstamo" <?php echo ($tipo_transaccion_seleccionada == 'Abonar a Préstamo') ? 'selected' : ''; ?>>Abonar a Préstamo</option>
+                            
+                            <?php if ($cliente_tiene_prestamos): ?>
+                                <option value="Abonar a Préstamo" <?php echo ($tipo_transaccion_seleccionada == 'Abonar a Préstamo') ? 'selected' : ''; ?>>Abonar a Préstamo</option>
+                            <?php endif; ?>
                         </select>
                     </div>
 
