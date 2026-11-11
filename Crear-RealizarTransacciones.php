@@ -5,7 +5,7 @@ include("conexionDB.php");
 $mensaje_exito = "";
 $mensaje_error = "";
 
-// Variables de control
+// Variabless control
 $num_cuenta_seleccionada = $_POST['num_cuenta'] ?? '';
 $tipo_transaccion_seleccionada = $_POST['tipo_transaccion'] ?? 'Deposito';
 $id_prestamo_seleccionado = $_POST['id_prestamo'] ?? '';
