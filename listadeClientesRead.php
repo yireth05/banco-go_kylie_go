@@ -1,19 +1,15 @@
 <?php
 session_start();
 require_once "conexionDB.php";
-
 if (!isset($_SESSION['rol']) || !in_array($_SESSION['rol'], ['administrador', 'cajero'])) {
     header("Location: login.php");
     exit;
 }
-
-$es_admin = ($_SESSION['rol'] === 'administrador'); // solo el administrador ve el estado de la contraseña
-
+$es_admin= ($_SESSION['rol'] === 'administrador'); 
 $busqueda = trim($_GET['busqueda'] ?? '');
 
 try {
     if ($busqueda !== '') {
-        // Consulta filtrada usando ILIKE (ideal para PostgreSQL, ignora mayúsculas/minúsculas)
         $stmt = $conexion->prepare("
             SELECT id_cliente, nomb_cli, apelli_cli, direccion, telefono, correo, fecha_registro 
             FROM clientes 
@@ -25,7 +21,6 @@ try {
         ");
         $stmt->execute([':busq' => '%' . $busqueda . '%']);
     } else {
-        // Consulta completa si no hay ningún filtro escrito
         $stmt = $conexion->query("SELECT id_cliente, nomb_cli, apelli_cli, direccion, telefono, correo, fecha_registro FROM clientes ORDER BY fecha_registro DESC");
     }
     $clientes = $stmt->fetchAll(PDO::FETCH_ASSOC);
