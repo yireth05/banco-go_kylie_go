@@ -1,5 +1,5 @@
 <?php
-// eliminar_cliente.php - responde JSON para el fetch de listadeClientesRead.php
+
 ob_start();
 session_start();
 require_once 'conexionDB.php';
