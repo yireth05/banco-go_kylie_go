@@ -12,10 +12,10 @@ $cajeros = [];
 $tipo_cuentas = [];
 
 try {
-    // 1. Obtener Ciudades
+    
     $ciudades = $conexion->query("SELECT * FROM ciudades ORDER BY id_ciudad")->fetchAll(PDO::FETCH_ASSOC);
 
-    // 2. Obtener sucursales con sus respectivas ciudades
+  
     $sucursales = $conexion->query("
         SELECT s.id_sucursal, s.nomb_sucursal, s.direccion_sucursal, c.nomb_ciudad 
         FROM sucursales s
@@ -31,7 +31,7 @@ try {
         ORDER BY caj.id_cajero
     ")->fetchAll(PDO::FETCH_ASSOC);
 
-    // 4. Ver tipos de cuenta
+    
     $tipo_cuentas = $conexion->query("SELECT * FROM tipo_cuentas ORDER BY cod_tipo_cuenta")->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
