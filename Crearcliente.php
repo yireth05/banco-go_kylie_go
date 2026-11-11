@@ -1,5 +1,4 @@
 <?php
-// Crearcliente.php
 ob_start();
 session_start();
 require_once "conexionDB.php";
@@ -29,8 +28,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $error = "Error: El número de teléfono solo debe contener dígitos numéricos y no puede incluir caracteres especiales.";
     } else {
         try {
-            // Por si la tabla se creó con un SQL viejo sin la columna password.
-            // Solo se hace el ALTER si la columna realmente no existe (así no exige ser dueño de la tabla).
+           
             $existe = $conexion->prepare(
                 "SELECT 1 FROM information_schema.columns
                  WHERE table_schema = current_schema() AND table_name = 'clientes' AND column_name = 'password'"
@@ -54,7 +52,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 ':pass' => password_hash($password, PASSWORD_DEFAULT), // se guarda con hash, nunca en texto plano
             ]);
 
-            // Verificar que realmente quedó guardada
             $chk = $conexion->prepare("SELECT password FROM clientes WHERE id_cliente = ?");
             $chk->execute([$id_cliente]);
             $guardada = (string)$chk->fetchColumn();
