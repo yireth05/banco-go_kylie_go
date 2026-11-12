@@ -55,7 +55,7 @@ function validar_password_nueva(string $pass): ?string {
     return null;
 }
 
-// Asegura la columna en ambas tablas (si no hay permisos, el error se muestra al intentar guardar)
+
 try {
     asegurar_columna_password($conexion, 'empleados');
     asegurar_columna_password($conexion, 'clientes');
@@ -66,7 +66,7 @@ try {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = $_POST['accion'] ?? '';
 
-    // ---------- Cambiar MI contraseña ----------
+
     if ($accion === 'cambiar_propia') {
         $actual    = trim($_POST['password_actual'] ?? '');
         $nueva     = trim($_POST['nueva_password'] ?? '');
@@ -87,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($guardada === false) {
                     $error = "No se encontró tu usuario en la base de datos.";
                 } elseif ((string)$guardada !== '' && !coincide_password($actual, (string)$guardada)) {
-                    // Si ya tenía contraseña, se exige la actual
+
                     $error = "La contraseña actual no es correcta.";
                 } else {
                     $up = $conexion->prepare("UPDATE $tabla_propia SET password = ? WHERE $col_id_propia = ?");
@@ -100,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // ---------- ADMIN: restablecer la contraseña de otro usuario ----------
+
     elseif ($accion === 'restablecer' && $es_admin) {
         $tipo   = $_POST['tipo_usuario'] ?? '';
         $cedula = trim($_POST['cedula'] ?? '');
