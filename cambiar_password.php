@@ -1,7 +1,5 @@
 <?php
-// cambiar_password.php
-// - Cualquier usuario (cliente, cajero o administrador) cambia su propia contraseña.
-// - El administrador puede restablecer la de cualquier cliente o empleado por cédula / ID.
+
 ob_start();
 session_start();
 require_once "conexionDB.php";
