@@ -18,12 +18,12 @@ $error         = "";
 $mensaje_admin = "";
 $error_admin   = "";
 
-// Tabla e ID según quién es el usuario que inició sesión
+
 $tabla_propia = ($rol === 'cliente') ? 'clientes' : 'empleados';
 $col_id_propia = ($rol === 'cliente') ? 'id_cliente' : 'id_empleado';
 
-// Crea la columna password en la tabla si no existe (solo hace ALTER cuando hace falta).
-// Los hashes miden unos 60 caracteres, por eso la columna debe ser de al menos 255.
+
+
 function asegurar_columna_password(PDO $db, string $tabla): void {
     $q = $db->prepare(
         "SELECT character_maximum_length FROM information_schema.columns
@@ -39,7 +39,7 @@ function asegurar_columna_password(PDO $db, string $tabla): void {
     }
 }
 
-// Compara lo escrito con lo guardado (hash, o texto plano antiguo).
+// Comparacion de la contraseña con el hasg guardado al habaedse camhiado.
 function coincide_password(string $escrita, string $guardada): bool {
     if ($guardada === '') return false;
     if (!empty(password_get_info($guardada)['algo'])) {
