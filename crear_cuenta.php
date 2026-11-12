@@ -10,19 +10,19 @@ if (!isset($_SESSION['rol']) || !in_array($_SESSION['rol'], ['administrador', 'c
 $mensaje = "";
 $error = "";
 
-// menú desplegable de clientes
+
 try {
     $stmt_cli = $conexion->query("SELECT id_cliente, nomb_cli, apelli_cli FROM clientes ORDER BY nomb_cli");
     $clientes = $stmt_cli->fetchAll(PDO::FETCH_ASSOC);
 
-    // 2. Obtener los tipos de cuenta (Ahorros, Corriente, etc.)
+
     $stmt_tipo = $conexion->query("SELECT cod_tipo_cuenta, nomb_tipo_cuenta FROM tipo_cuentas ORDER BY cod_tipo_cuenta");
     $tipos_cuenta = $stmt_tipo->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     $error = "Error al cargar datos iniciales: " . $e->getMessage();
 }
 
-// 3. Procesar el formulario cuando se envía por POST
+
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $num_cuenta      = strtoupper(trim($_POST["num_cuenta"] ?? ''));
     $id_cliente      = trim($_POST["id_cliente"] ?? '');
@@ -35,7 +35,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $error = "El saldo inicial debe ser un número mayor o igual a 0.";
     } else {
         try {
-            // El número de cuenta no puede repetirse (sin distinguir mayúsculas/minúsculas)
+
             $existe = $conexion->prepare("SELECT 1 FROM cuentas WHERE UPPER(num_cuenta) = ?");
             $existe->execute([$num_cuenta]);
             if ($existe->fetchColumn()) {
